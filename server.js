@@ -20,11 +20,7 @@ app.use(cors({
 // Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-
-// 정적 파일 제공 설정
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/css', express.static(path.join(__dirname, 'css')));
-app.use('/js', express.static(path.join(__dirname, 'js')));
+app.use(express.static(path.join(__dirname)));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -35,6 +31,95 @@ app.use((err, req, res, next) => {
         error: err.message
     });
 });
+
+// Database setup
+const dbPath = process.env.NODE_ENV === 'production' 
+    ? '/data/registrations.db'
+    : path.join(__dirname, 'registrations.db');
+
+// Ensure data directory exists in production
+if (process.env.NODE_ENV === 'production') {
+    const dataDir = '/data';
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir);
+    }
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('Error opening database:', err);
+        process.exit(1);
+    }
+    console.log('Connected to SQLite database at:', dbPath);
+    createTable();
+});
+
+// Create registrations table
+function createTable() {
+    const sql = `CREATE TABLE IF NOT EXISTS registrations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        gender TEXT NOT NULL,
+        address TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        birthdate TEXT NOT NULL,
+        livingType TEXT NOT NULL,
+        program TEXT NOT NULL,
+        privacyAgreement INTEGER NOT NULL,
+        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`;
+
+    db.run(sql, (err) => {
+        if (err) {
+            console.error('Error creating table:', err);
+            process.exit(1);
+        }
+        console.log('Registrations table created or already exists');
+        addSampleData();
+    });
+}
+
+// 샘플 데이터 추가
+function addSampleData() {
+    const sampleData = {
+        name: '홍길동',
+        gender: 'male',
+        address: '서울시 강남구',
+        phone: '010-1234-5678',
+        birthdate: '1990-01-01',
+        livingType: 'general',
+        program: 'yoga',
+        privacyAgreement: 1
+    };
+
+    db.get('SELECT COUNT(*) as count FROM registrations', (err, row) => {
+        if (err) {
+            console.error('Error checking table:', err);
+            return;
+        }
+        
+        if (row.count === 0) {
+            const stmt = db.prepare(`
+                INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            
+            stmt.run(
+                sampleData.name,
+                sampleData.gender,
+                sampleData.address,
+                sampleData.phone,
+                sampleData.birthdate,
+                sampleData.livingType,
+                sampleData.program,
+                sampleData.privacyAgreement
+            );
+            
+            stmt.finalize();
+            console.log('Sample data added');
+        }
+    });
+}
 
 // Routes
 app.get('/', (req, res) => {
@@ -144,84 +229,6 @@ function getProgramText(program) {
         'belly-dance': '밸리댄스'
     };
     return programs[program] || program;
-}
-
-// Database setup
-const dbPath = process.env.DATABASE_URL || 'registrations.db';
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-        process.exit(1);
-    }
-    console.log('Connected to SQLite database');
-    createTable();
-});
-
-// Create registrations table
-function createTable() {
-    const sql = `CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        gender TEXT NOT NULL,
-        address TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        birthdate TEXT NOT NULL,
-        livingType TEXT NOT NULL,
-        program TEXT NOT NULL,
-        privacyAgreement INTEGER NOT NULL,
-        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`;
-
-    db.run(sql, (err) => {
-        if (err) {
-            console.error('Error creating table:', err);
-            process.exit(1);
-        }
-        console.log('Registrations table created or already exists');
-        addSampleData();
-    });
-}
-
-// 샘플 데이터 추가
-function addSampleData() {
-    const sampleData = {
-        name: '홍길동',
-        gender: 'male',
-        address: '서울시 강남구',
-        phone: '010-1234-5678',
-        birthdate: '1990-01-01',
-        livingType: 'general',
-        program: 'yoga',
-        privacyAgreement: 1
-    };
-
-    db.get('SELECT COUNT(*) as count FROM registrations', (err, row) => {
-        if (err) {
-            console.error('Error checking table:', err);
-            return;
-        }
-        
-        if (row.count === 0) {
-            const stmt = db.prepare(`
-                INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            
-            stmt.run(
-                sampleData.name,
-                sampleData.gender,
-                sampleData.address,
-                sampleData.phone,
-                sampleData.birthdate,
-                sampleData.livingType,
-                sampleData.program,
-                sampleData.privacyAgreement
-            );
-            
-            stmt.finalize();
-            console.log('Sample data added');
-        }
-    });
 }
 
 // POST endpoint for registration
@@ -342,6 +349,11 @@ app.delete('/registrations/:id', (req, res) => {
         }
         res.json({ success: true, message: '삭제가 완료되었습니다.' });
     });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'healthy' });
 });
 
 // Start server with error handling
