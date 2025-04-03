@@ -1,6 +1,9 @@
 # Node.js 버전 지정
 FROM node:18-alpine
 
+# SQLite 의존성 설치
+RUN apk add --no-cache sqlite
+
 # 작업 디렉토리 생성
 WORKDIR /app
 

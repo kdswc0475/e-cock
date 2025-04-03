@@ -60,16 +60,12 @@ app.use((err, req, res, next) => {
 
 // Database setup with retry logic
 async function connectDatabase(retries = 5) {
-    const dbPath = NODE_ENV === 'production' 
-        ? DATABASE_URL
-        : path.join(__dirname, 'registrations.db');
-
     return new Promise((resolve, reject) => {
         const tryConnect = (attempt) => {
             console.log(`Attempting database connection (attempt ${attempt})`);
-            console.log('Database path:', dbPath);
             
-            const database = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+            // 메모리 데이터베이스 사용
+            const database = new sqlite3.Database(':memory:', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
                 if (err) {
                     console.error(`Database connection error (attempt ${attempt}):`, err);
                     if (attempt < retries) {
@@ -78,8 +74,29 @@ async function connectDatabase(retries = 5) {
                         reject(err);
                     }
                 } else {
-                    console.log('Connected to SQLite database');
-                    resolve(database);
+                    console.log('Connected to in-memory SQLite database');
+                    
+                    // 테이블 생성
+                    database.run(`CREATE TABLE IF NOT EXISTS registrations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        gender TEXT NOT NULL,
+                        address TEXT NOT NULL,
+                        phone TEXT NOT NULL,
+                        birthdate TEXT NOT NULL,
+                        livingType TEXT NOT NULL,
+                        program TEXT NOT NULL,
+                        privacyAgreement INTEGER NOT NULL,
+                        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )`, (err) => {
+                        if (err) {
+                            console.error('Error creating table:', err);
+                            reject(err);
+                        } else {
+                            console.log('Table created successfully');
+                            resolve(database);
+                        }
+                    });
                 }
             });
         };
@@ -413,32 +430,6 @@ async function startServer() {
         // 데이터베이스 연결
         db = await connectDatabase();
         
-        // 테이블 생성
-        await new Promise((resolve, reject) => {
-            const sql = `CREATE TABLE IF NOT EXISTS registrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                gender TEXT NOT NULL,
-                address TEXT NOT NULL,
-                phone TEXT NOT NULL,
-                birthdate TEXT NOT NULL,
-                livingType TEXT NOT NULL,
-                program TEXT NOT NULL,
-                privacyAgreement INTEGER NOT NULL,
-                registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`;
-
-            db.run(sql, (err) => {
-                if (err) {
-                    console.error('Error creating table:', err);
-                    reject(err);
-                } else {
-                    console.log('Table created successfully');
-                    resolve();
-                }
-            });
-        });
-
         // 샘플 데이터 추가
         await new Promise((resolve, reject) => {
             db.get('SELECT COUNT(*) as count FROM registrations', [], (err, row) => {

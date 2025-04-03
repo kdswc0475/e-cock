@@ -10,8 +10,6 @@ services:
         value: production
       - key: PORT
         value: "3000"
-      - key: DATABASE_URL
-        value: "./registrations.db"
     domains:
       - e-cock.onrender.com
     databases:
