@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>접수 관리</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .refresh-btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .refresh-btn:hover {
+            background-color: #45a049;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            padding: 5px 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .edit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .delete-btn {
+            padding: 5px 10px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .button-group {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .excel-btn {
+            background-color: #27ae60;
+        }
+        
+        .excel-btn:hover {
+            background-color: #219a52;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>접수 관리</h1>
+        <div class="button-group">
+            <button class="refresh-btn" onclick="loadRegistrations()">새로고침</button>
+            <button class="excel-btn" onclick="exportToExcel()">Excel 다운로드</button>
+        </div>
+        <div id="message"></div>
+        <table id="registrationsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>이름</th>
+                    <th>성별</th>
+                    <th>주소</th>
+                    <th>연락처</th>
+                    <th>생년월일</th>
+                    <th>생활구분</th>
+                    <th>프로그램</th>
+                    <th>접수일시</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="registrationsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>접수 정보 수정</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editName">이름</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editGender">성별</label>
+                    <select id="editGender" required>
+                        <option value="male">남성</option>
+                        <option value="female">여성</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editAddress">주소</label>
+                    <input type="text" id="editAddress" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPhone">연락처</label>
+                    <input type="tel" id="editPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="editBirthdate">생년월일</label>
+                    <input type="date" id="editBirthdate" required>
+                </div>
+                <div class="form-group">
+                    <label for="editLivingType">생활구분</label>
+                    <select id="editLivingType" required>
+                        <option value="general">일반</option>
+                        <option value="basic">기초생활수급</option>
+                        <option value="lowIncome">차상위</option>
+                        <option value="veteran">국가유공자</option>
+                        <option value="other">기타</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editProgram">프로그램</label>
+                    <select id="editProgram" required></select>
+                </div>
+                <button type="submit">수정 완료</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const programs = [
+            { id: 'ballet', name: '유아발레교실' },
+            { id: 'kpop-a', name: '아동K-POP 댄스(A반)' },
+            { id: 'kpop-b', name: '아동K-POP 댄스(B반)' },
+            { id: 'yoga', name: '성인요가' },
+            { id: 'diet-dance', name: '다이어트 댄스' },
+            { id: 'guitar', name: '성인 통기타' },
+            { id: 'belly-dance', name: '밸리댄스' }
+        ];
+
+        function getLivingTypeText(type) {
+            const types = {
+                'general': '일반',
+                'basic': '기초생활수급',
+                'lowIncome': '차상위',
+                'veteran': '국가유공자',
+                'other': '기타'
+            };
+            return types[type] || type;
+        }
+
+        function getProgramText(program) {
+            const programMap = {
+                'ballet': '유아발레교실',
+                'kpop-a': '아동K-POP 댄스(A반)',
+                'kpop-b': '아동K-POP 댄스(B반)',
+                'yoga': '성인요가',
+                'diet-dance': '다이어트 댄스',
+                'guitar': '성인 통기타',
+                'belly-dance': '밸리댄스'
+            };
+            return programMap[program] || program;
+        }
+
+        async function loadRegistrations() {
+            const messageElement = document.getElementById('message');
+            const tbody = document.getElementById('registrationsBody');
+            
+            try {
+                const response = await fetch('http://localhost:3000/registrations');
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+
+                tbody.innerHTML = '';
+                
+                if (data.data.length === 0) {
+                    messageElement.textContent = '등록된 접수 정보가 없습니다.';
+                    messageElement.className = 'message';
+                    return;
+                }
+
+                data.data.forEach(registration => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${registration.id}</td>
+                        <td>${registration.name}</td>
+                        <td>${registration.gender === 'male' ? '남성' : '여성'}</td>
+                        <td>${registration.address}</td>
+                        <td>${registration.phone}</td>
+                        <td>${registration.birthdate}</td>
+                        <td>${getLivingTypeText(registration.livingType)}</td>
+                        <td>${getProgramText(registration.program)}</td>
+                        <td>${new Date(registration.registrationDate).toLocaleString()}</td>
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="openEditModal(${registration.id})">수정</button>
+                            <button class="delete-btn" onclick="deleteRegistration(${registration.id})">삭제</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                messageElement.textContent = '';
+                messageElement.className = '';
+            } catch (error) {
+                messageElement.textContent = `오류 발생: ${error.message}`;
+                messageElement.className = 'message error';
+            }
+        }
+
+        function openEditModal(id) {
+            const modal = document.getElementById('editModal');
+            const editForm = document.getElementById('editForm');
+            
+            // 프로그램 드롭다운 채우기
+            const programSelect = document.getElementById('editProgram');
+            programSelect.innerHTML = '<option value="">선택하세요</option>';
+            programs.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program.id;
+                option.textContent = program.name;
+                programSelect.appendChild(option);
+            });
+
+            // 기존 데이터 불러오기
+            fetch(`http://localhost:3000/registrations/${id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || '데이터를 불러오는데 실패했습니다.');
+                    }
+                    const registration = data.data;
+                    document.getElementById('editId').value = registration.id;
+                    document.getElementById('editName').value = registration.name;
+                    document.getElementById('editGender').value = registration.gender;
+                    document.getElementById('editAddress').value = registration.address;
+                    document.getElementById('editPhone').value = registration.phone;
+                    document.getElementById('editBirthdate').value = registration.birthdate;
+                    document.getElementById('editLivingType').value = registration.livingType;
+                    document.getElementById('editProgram').value = registration.program;
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert(`데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`);
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // 수정 폼 제출
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('editId').value;
+            const formData = {
+                name: document.getElementById('editName').value,
+                gender: document.getElementById('editGender').value,
+                address: document.getElementById('editAddress').value,
+                phone: document.getElementById('editPhone').value,
+                birthdate: document.getElementById('editBirthdate').value,
+                livingType: document.getElementById('editLivingType').value,
+                program: document.getElementById('editProgram').value
+            };
+
+            try {
+                const response = await fetch(`http://localhost:3000/registrations/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('수정이 완료되었습니다.');
+                    closeModal();
+                    loadRegistrations();
+                } else {
+                    alert(data.message || '수정 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                alert('서버 연결에 실패했습니다.');
+            }
+        });
+
+        // 삭제 기능
+        async function deleteRegistration(id) {
+            if (!confirm('정말로 이 접수를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/registrations/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message || '삭제 중 오류가 발생했습니다.');
+                }
+
+                alert('삭제가 완료되었습니다.');
+                loadRegistrations();
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+            }
+        }
+
+        async function exportToExcel() {
+            try {
+                const response = await fetch('http://localhost:3000/export-excel');
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Excel 파일이 생성되었습니다.\n경로: ' + data.filePath);
+                } else {
+                    throw new Error(data.message || 'Excel 파일 생성 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Excel 파일 생성 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 페이지 로드 시 데이터 불러오기
+        document.addEventListener('DOMContentLoaded', loadRegistrations);
+    </script>
+</body>
+</html> 

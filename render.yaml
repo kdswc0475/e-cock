@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: e-cock
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: e-cock-db
+          property: connectionString
+    databases:
+      - name: e-cock-db
+        databaseName: e-cock
+        user: e-cock
+        plan: free 
