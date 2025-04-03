@@ -30,6 +30,9 @@ app.use(cors({
 // Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+// 정적 파일 제공 설정
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname)));
 
 // 요청 로깅 미들웨어
@@ -89,17 +92,23 @@ app.get('/health', (req, res) => {
 // Routes with better error handling
 app.get('/', (req, res) => {
     try {
-        if (!fs.existsSync(path.join(__dirname, 'index.html'))) {
-            throw new Error('index.html not found');
+        const indexPath = path.join(__dirname, 'index.html');
+        console.log('Attempting to serve index.html from:', indexPath);
+        
+        if (!fs.existsSync(indexPath)) {
+            console.error('index.html not found at:', indexPath);
+            return res.status(404).send('index.html not found');
         }
-        res.sendFile(path.join(__dirname, 'index.html'));
-    } catch (error) {
-        console.error('Error serving index.html:', error);
-        res.status(500).json({
-            success: false,
-            message: '페이지를 불러오는 중 오류가 발생했습니다.',
-            error: error.message
+        
+        res.sendFile(indexPath, (err) => {
+            if (err) {
+                console.error('Error sending index.html:', err);
+                res.status(500).send('Error serving index.html');
+            }
         });
+    } catch (error) {
+        console.error('Error in root route:', error);
+        res.status(500).send('Internal Server Error');
     }
 });
 
