@@ -2,6 +2,8 @@ services:
   - type: web
     name: e-cock
     env: node
+    region: singapore
+    plan: free
     buildCommand: npm install
     startCommand: node server.js
     envVars:
@@ -9,10 +11,8 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: DATABASE_URL
-        fromDatabase:
-          name: e-cock-db
-          property: connectionString
+    healthCheckPath: /
+    autoDeploy: false
     databases:
       - name: e-cock-db
         databaseName: e-cock
