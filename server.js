@@ -9,8 +9,8 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 서버 시작 시간 기록
-const startTime = new Date();
+// 전역 데이터베이스 객체
+let db;
 
 // CORS 설정
 app.use(cors({
@@ -43,23 +43,15 @@ app.use((err, req, res, next) => {
 });
 
 // Database setup with retry logic
-function connectDatabase(retries = 5) {
+async function connectDatabase(retries = 5) {
     const dbPath = process.env.NODE_ENV === 'production' 
-        ? '/data/registrations.db'
+        ? path.join(__dirname, 'registrations.db')  // 프로덕션에서도 로컬 경로 사용
         : path.join(__dirname, 'registrations.db');
-
-    // Ensure data directory exists in production
-    if (process.env.NODE_ENV === 'production') {
-        const dataDir = '/data';
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir);
-        }
-    }
 
     return new Promise((resolve, reject) => {
         const tryConnect = (attempt) => {
             console.log(`Attempting database connection (attempt ${attempt})`);
-            const db = new sqlite3.Database(dbPath, (err) => {
+            const database = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
                 if (err) {
                     console.error(`Database connection error (attempt ${attempt}):`, err);
                     if (attempt < retries) {
@@ -69,7 +61,7 @@ function connectDatabase(retries = 5) {
                     }
                 } else {
                     console.log('Connected to SQLite database at:', dbPath);
-                    resolve(db);
+                    resolve(database);
                 }
             });
         };
@@ -327,9 +319,10 @@ app.delete('/registrations/:id', (req, res) => {
 // Initialize database and start server
 async function startServer() {
     try {
-        const db = await connectDatabase();
+        // 데이터베이스 연결
+        db = await connectDatabase();
         
-        // Create table and add sample data
+        // 테이블 생성
         await new Promise((resolve, reject) => {
             const sql = `CREATE TABLE IF NOT EXISTS registrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -345,12 +338,69 @@ async function startServer() {
             )`;
 
             db.run(sql, (err) => {
-                if (err) reject(err);
-                else resolve();
+                if (err) {
+                    console.error('Error creating table:', err);
+                    reject(err);
+                } else {
+                    console.log('Table created successfully');
+                    resolve();
+                }
             });
         });
 
-        // Start server
+        // 샘플 데이터 추가
+        await new Promise((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM registrations', [], (err, row) => {
+                if (err) {
+                    console.error('Error checking table:', err);
+                    reject(err);
+                    return;
+                }
+                
+                if (row.count === 0) {
+                    const sampleData = {
+                        name: '홍길동',
+                        gender: 'male',
+                        address: '서울시 강남구',
+                        phone: '010-1234-5678',
+                        birthdate: '1990-01-01',
+                        livingType: 'general',
+                        program: 'yoga',
+                        privacyAgreement: 1
+                    };
+
+                    const stmt = db.prepare(`
+                        INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    
+                    stmt.run(
+                        sampleData.name,
+                        sampleData.gender,
+                        sampleData.address,
+                        sampleData.phone,
+                        sampleData.birthdate,
+                        sampleData.livingType,
+                        sampleData.program,
+                        sampleData.privacyAgreement,
+                        (err) => {
+                            if (err) {
+                                console.error('Error inserting sample data:', err);
+                                reject(err);
+                            } else {
+                                console.log('Sample data added successfully');
+                                resolve();
+                            }
+                        }
+                    );
+                    stmt.finalize();
+                } else {
+                    resolve();
+                }
+            });
+        });
+
+        // 서버 시작
         app.listen(port, '0.0.0.0', (err) => {
             if (err) {
                 console.error('서버 시작 중 오류 발생:', err);
