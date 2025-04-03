@@ -10,9 +10,13 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
-    healthCheckPath: /
+        value: "3000"
+      - key: DATABASE_URL
+        value: "./registrations.db"
+    healthCheckPath: /health
     autoDeploy: false
+    domains:
+      - e-cock.onrender.com
     databases:
       - name: e-cock-db
         databaseName: e-cock

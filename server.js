@@ -6,15 +6,22 @@ const path = require('path');
 const XLSX = require('xlsx');
 const fs = require('fs');
 
-const app = express();
-const port = process.env.PORT || 3000;
+// 환경 변수 설정
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const PORT = process.env.PORT || 3000;
+const DATABASE_URL = process.env.DATABASE_URL || './registrations.db';
 
 // 서버 URL 설정
-const SERVER_URL = process.env.NODE_ENV === 'production'
+const SERVER_URL = NODE_ENV === 'production'
     ? 'https://e-cock.onrender.com'
-    : `http://localhost:${port}`;
+    : `http://localhost:${PORT}`;
 
+console.log('Environment:', NODE_ENV);
+console.log('Port:', PORT);
+console.log('Database URL:', DATABASE_URL);
 console.log('Server URL:', SERVER_URL);
+
+const app = express();
 
 // 전역 데이터베이스 객체
 let db;
@@ -54,13 +61,15 @@ app.use((err, req, res, next) => {
 
 // Database setup with retry logic
 async function connectDatabase(retries = 5) {
-    const dbPath = process.env.NODE_ENV === 'production' 
-        ? path.join(__dirname, 'registrations.db')  // 프로덕션에서도 로컬 경로 사용
+    const dbPath = NODE_ENV === 'production' 
+        ? DATABASE_URL
         : path.join(__dirname, 'registrations.db');
 
     return new Promise((resolve, reject) => {
         const tryConnect = (attempt) => {
             console.log(`Attempting database connection (attempt ${attempt})`);
+            console.log('Database path:', dbPath);
+            
             const database = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
                 if (err) {
                     console.error(`Database connection error (attempt ${attempt}):`, err);
@@ -70,7 +79,7 @@ async function connectDatabase(retries = 5) {
                         reject(err);
                     }
                 } else {
-                    console.log('Connected to SQLite database at:', dbPath);
+                    console.log('Connected to SQLite database');
                     resolve(database);
                 }
             });
@@ -96,14 +105,12 @@ app.get('/health', async (req, res) => {
         const status = {
             status: 'healthy',
             timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV || 'development',
+            environment: NODE_ENV,
             serverUrl: SERVER_URL,
-            port: port,
+            port: PORT,
             database: {
                 status: dbStatus,
-                path: process.env.NODE_ENV === 'production' 
-                    ? path.join(__dirname, 'registrations.db')
-                    : path.join(__dirname, 'registrations.db')
+                path: DATABASE_URL
             },
             memory: {
                 heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
@@ -460,12 +467,12 @@ async function startServer() {
         });
 
         // 서버 시작
-        app.listen(port, '0.0.0.0', (err) => {
+        app.listen(PORT, '0.0.0.0', (err) => {
             if (err) {
                 console.error('서버 시작 중 오류 발생:', err);
                 process.exit(1);
             }
-            console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
+            console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
         });
 
     } catch (error) {
