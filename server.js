@@ -9,6 +9,9 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// 서버 시작 시간 기록
+const startTime = new Date();
+
 // CORS 설정
 app.use(cors({
     origin: '*',
@@ -22,108 +25,75 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname)));
 
+// 요청 로깅 미들웨어
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
     res.status(500).json({
         success: false,
         message: '서버 오류가 발생했습니다.',
-        error: err.message
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
     });
 });
 
-// Database setup
-const dbPath = process.env.NODE_ENV === 'production' 
-    ? '/data/registrations.db'
-    : path.join(__dirname, 'registrations.db');
+// Database setup with retry logic
+function connectDatabase(retries = 5) {
+    const dbPath = process.env.NODE_ENV === 'production' 
+        ? '/data/registrations.db'
+        : path.join(__dirname, 'registrations.db');
 
-// Ensure data directory exists in production
-if (process.env.NODE_ENV === 'production') {
-    const dataDir = '/data';
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
+    // Ensure data directory exists in production
+    if (process.env.NODE_ENV === 'production') {
+        const dataDir = '/data';
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir);
+        }
     }
+
+    return new Promise((resolve, reject) => {
+        const tryConnect = (attempt) => {
+            console.log(`Attempting database connection (attempt ${attempt})`);
+            const db = new sqlite3.Database(dbPath, (err) => {
+                if (err) {
+                    console.error(`Database connection error (attempt ${attempt}):`, err);
+                    if (attempt < retries) {
+                        setTimeout(() => tryConnect(attempt + 1), 5000);
+                    } else {
+                        reject(err);
+                    }
+                } else {
+                    console.log('Connected to SQLite database at:', dbPath);
+                    resolve(db);
+                }
+            });
+        };
+        tryConnect(1);
+    });
 }
 
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-        process.exit(1);
-    }
-    console.log('Connected to SQLite database at:', dbPath);
-    createTable();
+// Health check endpoint with detailed status
+app.get('/health', (req, res) => {
+    const uptime = Math.floor((new Date() - startTime) / 1000);
+    res.json({
+        status: 'healthy',
+        uptime: `${uptime} seconds`,
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+    });
 });
 
-// Create registrations table
-function createTable() {
-    const sql = `CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        gender TEXT NOT NULL,
-        address TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        birthdate TEXT NOT NULL,
-        livingType TEXT NOT NULL,
-        program TEXT NOT NULL,
-        privacyAgreement INTEGER NOT NULL,
-        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`;
-
-    db.run(sql, (err) => {
-        if (err) {
-            console.error('Error creating table:', err);
-            process.exit(1);
-        }
-        console.log('Registrations table created or already exists');
-        addSampleData();
-    });
-}
-
-// 샘플 데이터 추가
-function addSampleData() {
-    const sampleData = {
-        name: '홍길동',
-        gender: 'male',
-        address: '서울시 강남구',
-        phone: '010-1234-5678',
-        birthdate: '1990-01-01',
-        livingType: 'general',
-        program: 'yoga',
-        privacyAgreement: 1
-    };
-
-    db.get('SELECT COUNT(*) as count FROM registrations', (err, row) => {
-        if (err) {
-            console.error('Error checking table:', err);
-            return;
-        }
-        
-        if (row.count === 0) {
-            const stmt = db.prepare(`
-                INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            
-            stmt.run(
-                sampleData.name,
-                sampleData.gender,
-                sampleData.address,
-                sampleData.phone,
-                sampleData.birthdate,
-                sampleData.livingType,
-                sampleData.program,
-                sampleData.privacyAgreement
-            );
-            
-            stmt.finalize();
-            console.log('Sample data added');
-        }
-    });
-}
-
-// Routes
+// Routes with better error handling
 app.get('/', (req, res) => {
     try {
+        if (!fs.existsSync(path.join(__dirname, 'index.html'))) {
+            throw new Error('index.html not found');
+        }
         res.sendFile(path.join(__dirname, 'index.html'));
     } catch (error) {
         console.error('Error serving index.html:', error);
@@ -137,6 +107,9 @@ app.get('/', (req, res) => {
 
 app.get('/admin', (req, res) => {
     try {
+        if (!fs.existsSync(path.join(__dirname, 'admin.html'))) {
+            throw new Error('admin.html not found');
+        }
         res.sendFile(path.join(__dirname, 'admin.html'));
     } catch (error) {
         console.error('Error serving admin.html:', error);
@@ -351,16 +324,49 @@ app.delete('/registrations/:id', (req, res) => {
     });
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'healthy' });
-});
+// Initialize database and start server
+async function startServer() {
+    try {
+        const db = await connectDatabase();
+        
+        // Create table and add sample data
+        await new Promise((resolve, reject) => {
+            const sql = `CREATE TABLE IF NOT EXISTS registrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                gender TEXT NOT NULL,
+                address TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                birthdate TEXT NOT NULL,
+                livingType TEXT NOT NULL,
+                program TEXT NOT NULL,
+                privacyAgreement INTEGER NOT NULL,
+                registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`;
 
-// Start server with error handling
-app.listen(port, '0.0.0.0', (err) => {
-    if (err) {
-        console.error('서버 시작 중 오류 발생:', err);
+            db.run(sql, (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // Start server
+        app.listen(port, '0.0.0.0', (err) => {
+            if (err) {
+                console.error('서버 시작 중 오류 발생:', err);
+                process.exit(1);
+            }
+            console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
+        });
+
+    } catch (error) {
+        console.error('Server initialization error:', error);
         process.exit(1);
     }
-    console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
+}
+
+// Start the server
+startServer().catch(error => {
+    console.error('Fatal error during server startup:', error);
+    process.exit(1);
 }); 
