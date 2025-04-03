@@ -1,11 +1,10 @@
 services:
   - type: web
     name: e-cock
-    env: node
+    env: docker
     region: singapore
     plan: free
-    buildCommand: npm install
-    startCommand: node server.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -13,8 +12,6 @@ services:
         value: "3000"
       - key: DATABASE_URL
         value: "./registrations.db"
-    healthCheckPath: /health
-    autoDeploy: false
     domains:
       - e-cock.onrender.com
     databases:
