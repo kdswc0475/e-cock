@@ -40,7 +40,6 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // 정적 파일 제공 설정
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname)));
 
 // 요청 로깅 미들웨어
 app.use((req, res, next) => {
@@ -140,42 +139,39 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// Routes with better error handling
+// 기본 라우트 핸들러
 app.get('/', (req, res) => {
     try {
-        const indexPath = path.join(__dirname, 'index.html');
-        console.log('Attempting to serve index.html from:', indexPath);
+        const indexPath = path.join(__dirname, 'public', 'index.html');
+        console.log('Serving index.html from:', indexPath);
         
         if (!fs.existsSync(indexPath)) {
             console.error('index.html not found at:', indexPath);
             return res.status(404).send('index.html not found');
         }
         
-        res.sendFile(indexPath, (err) => {
-            if (err) {
-                console.error('Error sending index.html:', err);
-                res.status(500).send('Error serving index.html');
-            }
-        });
+        res.sendFile(indexPath);
     } catch (error) {
-        console.error('Error in root route:', error);
+        console.error('Error serving index.html:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 
+// 관리자 페이지 라우트
 app.get('/admin', (req, res) => {
     try {
-        if (!fs.existsSync(path.join(__dirname, 'admin.html'))) {
-            throw new Error('admin.html not found');
+        const adminPath = path.join(__dirname, 'public', 'admin.html');
+        console.log('Serving admin.html from:', adminPath);
+        
+        if (!fs.existsSync(adminPath)) {
+            console.error('admin.html not found at:', adminPath);
+            return res.status(404).send('admin.html not found');
         }
-        res.sendFile(path.join(__dirname, 'admin.html'));
+        
+        res.sendFile(adminPath);
     } catch (error) {
         console.error('Error serving admin.html:', error);
-        res.status(500).json({
-            success: false,
-            message: '관리자 페이지를 불러오는 중 오류가 발생했습니다.',
-            error: error.message
-        });
+        res.status(500).send('Internal Server Error');
     }
 });
 
@@ -262,50 +258,79 @@ function getProgramText(program) {
     return programs[program] || program;
 }
 
-// POST endpoint for registration
-app.post('/register', (req, res) => {
-    const { name, gender, address, phone, birthdate, livingType, program, privacyAgreement } = req.body;
-
-    if (!name || !gender || !address || !phone || !birthdate || !livingType || !program || privacyAgreement === undefined) {
-        return res.status(400).json({ message: '모든 필드를 입력해주세요.' });
-    }
-
-    const stmt = db.prepare(`
-        INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(name, gender, address, phone, birthdate, livingType, program, privacyAgreement ? 1 : 0, function(err) {
-        if (err) {
-            console.error('Error inserting data:', err);
-            return res.status(500).json({ message: '데이터 저장 중 오류가 발생했습니다.' });
-        }
-
-        res.status(201).json({ 
-            message: '접수가 성공적으로 완료되었습니다.',
-            id: this.lastID
+// API 엔드포인트: 등록 데이터 조회
+app.get('/api/registrations', (req, res) => {
+    try {
+        db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
+            if (err) {
+                console.error('Error fetching registrations:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: '데이터 조회 중 오류가 발생했습니다.',
+                    error: err.message
+                });
+            }
+            res.json({
+                success: true,
+                data: rows
+            });
         });
-    });
-
-    stmt.finalize();
+    } catch (error) {
+        console.error('Error in /api/registrations:', error);
+        res.status(500).json({
+            success: false,
+            message: '서버 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
 });
 
-// GET all registrations
-app.get('/registrations', (req, res) => {
-    db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
-        if (err) {
-            console.error('Error retrieving data:', err);
-            return res.status(500).json({ 
-                success: false,
-                message: '데이터 조회 중 오류가 발생했습니다.',
-                error: err.message
-            });
-        }
-        res.json({ 
-            success: true,
-            data: rows
+// API 엔드포인트: 새로운 등록 데이터 추가
+app.post('/api/registrations', (req, res) => {
+    try {
+        const { name, gender, address, phone, birthdate, livingType, program, privacyAgreement } = req.body;
+        
+        const stmt = db.prepare(`
+            INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        stmt.run(
+            name,
+            gender,
+            address,
+            phone,
+            birthdate,
+            livingType,
+            program,
+            privacyAgreement,
+            function(err) {
+                if (err) {
+                    console.error('Error inserting registration:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: '등록 중 오류가 발생했습니다.',
+                        error: err.message
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    message: '등록이 완료되었습니다.',
+                    id: this.lastID
+                });
+            }
+        );
+        
+        stmt.finalize();
+    } catch (error) {
+        console.error('Error in /api/registrations POST:', error);
+        res.status(500).json({
+            success: false,
+            message: '서버 오류가 발생했습니다.',
+            error: error.message
         });
-    });
+    }
 });
 
 // GET single registration

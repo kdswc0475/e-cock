@@ -10,51 +10,54 @@ programs.forEach(program => {
 });
 
 // Handle form submission
-const form = document.getElementById('registrationForm');
-const messageElement = document.getElementById('message');
-
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registrationForm');
+    const submitButton = document.getElementById('submitButton');
     
-    // 개인정보 동의 확인
-    if (!form.privacyAgreement.checked) {
-        messageElement.textContent = '개인정보 수집 및 이용에 동의해주세요.';
-        messageElement.className = 'error';
-        return;
-    }
-    
-    const formData = {
-        name: form.name.value,
-        gender: form.gender.value,
-        address: form.address.value,
-        phone: form.phone.value,
-        birthdate: form.birthdate.value,
-        livingType: form.livingType.value,
-        program: form.program.value,
-        privacyAgreement: form.privacyAgreement.checked
-    };
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                submitButton.disabled = true;
+                submitButton.textContent = '처리 중...';
+                
+                const formData = {
+                    name: document.getElementById('name').value,
+                    gender: document.querySelector('input[name="gender"]:checked').value,
+                    address: document.getElementById('address').value,
+                    phone: document.getElementById('phone').value,
+                    birthdate: document.getElementById('birthdate').value,
+                    livingType: document.getElementById('livingType').value,
+                    program: document.getElementById('program').value,
+                    privacyAgreement: document.getElementById('privacyAgreement').checked ? 1 : 0
+                };
 
-    try {
-        const response = await fetch('http://localhost:3000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
+                const response = await fetch('/api/registrations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || '등록 중 오류가 발생했습니다.');
+                }
+
+                alert('접수가 완료되었습니다.');
+                form.reset();
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert(error.message || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = '접수하기';
+            }
         });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            messageElement.textContent = '접수가 성공적으로 완료되었습니다.';
-            messageElement.className = 'success';
-            form.reset();
-        } else {
-            messageElement.textContent = data.message || '접수 중 오류가 발생했습니다.';
-            messageElement.className = 'error';
-        }
-    } catch (error) {
-        messageElement.textContent = '서버 연결에 실패했습니다. 다시 시도해주세요.';
-        messageElement.className = 'error';
     }
 });
