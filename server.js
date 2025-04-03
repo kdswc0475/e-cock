@@ -79,14 +79,58 @@ async function connectDatabase(retries = 5) {
     });
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        environment: process.env.NODE_ENV || 'development',
-        serverUrl: SERVER_URL,
-        timestamp: new Date().toISOString()
-    });
+// Health check endpoint with detailed status
+app.get('/health', async (req, res) => {
+    try {
+        // 데이터베이스 연결 상태 확인
+        const dbStatus = await new Promise((resolve) => {
+            db.get('SELECT 1', (err) => {
+                resolve(err ? 'disconnected' : 'connected');
+            });
+        });
+
+        // 메모리 사용량 확인
+        const memoryUsage = process.memoryUsage();
+
+        // 서버 상태 정보 구성
+        const status = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            serverUrl: SERVER_URL,
+            port: port,
+            database: {
+                status: dbStatus,
+                path: process.env.NODE_ENV === 'production' 
+                    ? path.join(__dirname, 'registrations.db')
+                    : path.join(__dirname, 'registrations.db')
+            },
+            memory: {
+                heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+                heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
+                rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB'
+            },
+            uptime: Math.floor(process.uptime()) + ' seconds'
+        };
+
+        // 파일 시스템 확인
+        const indexPath = path.join(__dirname, 'index.html');
+        const adminPath = path.join(__dirname, 'admin.html');
+        
+        status.files = {
+            'index.html': fs.existsSync(indexPath) ? 'exists' : 'missing',
+            'admin.html': fs.existsSync(adminPath) ? 'exists' : 'missing'
+        };
+
+        res.json(status);
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({
+            status: 'unhealthy',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // Routes with better error handling
