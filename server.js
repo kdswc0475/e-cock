@@ -9,12 +9,19 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// 서버 URL 설정
+const SERVER_URL = process.env.NODE_ENV === 'production'
+    ? 'https://e-cock.onrender.com'
+    : `http://localhost:${port}`;
+
+console.log('Server URL:', SERVER_URL);
+
 // 전역 데이터베이스 객체
 let db;
 
 // CORS 설정
 app.use(cors({
-    origin: '*',
+    origin: [SERVER_URL, 'https://e-cock.onrender.com', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -69,13 +76,12 @@ async function connectDatabase(retries = 5) {
     });
 }
 
-// Health check endpoint with detailed status
+// Health check endpoint
 app.get('/health', (req, res) => {
-    const uptime = Math.floor((new Date() - startTime) / 1000);
     res.json({
         status: 'healthy',
-        uptime: `${uptime} seconds`,
         environment: process.env.NODE_ENV || 'development',
+        serverUrl: SERVER_URL,
         timestamp: new Date().toISOString()
     });
 });
