@@ -17,8 +17,17 @@ const app = express();
 // 데이터 디렉토리 생성
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+        fs.mkdirSync(dataDir, { recursive: true, mode: 0o777 });
+        console.log('Data directory created:', dataDir);
+    } catch (err) {
+        console.error('Error creating data directory:', err);
+    }
 }
+
+// 데이터베이스 파일 경로
+const dbPath = path.join(dataDir, 'registrations.db');
+console.log('Database path:', dbPath);
 
 // CORS 설정
 app.use(cors());
@@ -132,7 +141,7 @@ app.post('/api/registrations', (req, res) => {
 app.put('/api/registrations/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
     const { name, gender, address, phone, birthdate, livingType, program } = req.body;
-    
+
     if (!name || !gender || !address || !phone || !birthdate || !livingType || !program) {
         return res.status(400).json({ success: false, message: '모든 필드를 입력해주세요.' });
     }
@@ -191,19 +200,40 @@ app.get('/admin', (req, res) => {
 });
 
 // 데이터베이스 연결
-const dbPath = path.join(dataDir, 'registrations.db');
-let db;
+let db = null;
 
 function connectDatabase() {
     return new Promise((resolve, reject) => {
-        console.log('Connecting to database at:', dbPath);
+        console.log('Connecting to database...');
+        
+        // 데이터베이스 파일 권한 설정
+        try {
+            if (fs.existsSync(dbPath)) {
+                fs.chmodSync(dbPath, 0o777);
+                console.log('Database file permissions updated');
+            }
+            fs.chmodSync(dataDir, 0o777);
+            console.log('Data directory permissions updated');
+        } catch (err) {
+            console.warn('Warning: Could not set file permissions:', err);
+        }
+
+        // 데이터베이스 연결
         db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
             if (err) {
                 console.error('Error opening database:', err);
                 reject(err);
                 return;
             }
-            console.log('Connected to the SQLite database.');
+            
+            console.log('Connected to SQLite database');
+            
+            // WAL 모드 활성화
+            db.run('PRAGMA journal_mode = WAL', (err) => {
+                if (err) {
+                    console.warn('Warning: Could not enable WAL mode:', err);
+                }
+            });
             
             // 테이블 생성
             db.run(`CREATE TABLE IF NOT EXISTS registrations (
@@ -222,7 +252,7 @@ function connectDatabase() {
                     reject(err);
                     return;
                 }
-                console.log('Registrations table ready');
+                console.log('Registrations table is ready');
                 resolve();
             });
         });
@@ -247,11 +277,10 @@ process.on('SIGTERM', () => {
     console.log('Received SIGTERM. Performing cleanup...');
     if (db) {
         db.close(() => {
-            console.log('Server and database connections closed.');
+            console.log('Database connection closed.');
             process.exit(0);
         });
     } else {
-        console.log('Server connections closed.');
         process.exit(0);
     }
 });

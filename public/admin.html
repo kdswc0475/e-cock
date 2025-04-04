@@ -201,14 +201,15 @@
             try {
                 const response = await fetch('/api/registrations', {
                     headers: {
-                        'Authorization': `Basic ${authToken}`
+                        'Authorization': `Basic ${authToken}`,
+                        'Cache-Control': 'no-cache'
                     }
                 });
                 
                 if (response.ok) {
                     document.getElementById('loginContainer').style.display = 'none';
                     document.getElementById('adminContainer').style.display = 'block';
-                    loadRegistrations();
+                    await loadRegistrations();
                 } else {
                     const data = await response.json();
                     document.getElementById('loginMessage').textContent = data.message;
@@ -225,7 +226,8 @@
         async function fetchWithAuth(url, options = {}) {
             const headers = {
                 ...options.headers,
-                'Authorization': `Basic ${authToken}`
+                'Authorization': `Basic ${authToken}`,
+                'Cache-Control': 'no-cache'
             };
             
             const response = await fetch(url, { ...options, headers });
@@ -240,10 +242,12 @@
         // 등록 데이터 로드
         async function loadRegistrations() {
             try {
+                console.log('Loading registrations...');
                 const response = await fetchWithAuth('/api/registrations');
                 const result = await response.json();
                 
                 if (result.success) {
+                    console.log('Received data:', result.data);
                     const tbody = document.getElementById('registrationsBody');
                     tbody.innerHTML = '';
                     
@@ -266,7 +270,10 @@
                         `;
                         tbody.appendChild(row);
                     });
+                    
+                    console.log('Table updated with', result.data.length, 'rows');
                 } else {
+                    console.error('Failed to load data:', result.message);
                     showMessage(result.message, 'error');
                 }
             } catch (error) {
@@ -308,17 +315,17 @@
                         };
                         
                         const updateResponse = await fetchWithAuth(`/api/registrations/${id}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                             body: JSON.stringify(updatedData)
                         });
                         
                         const updateResult = await updateResponse.json();
                         if (updateResult.success) {
                             showMessage('수정이 완료되었습니다.', 'success');
-                            loadRegistrations();
+                    loadRegistrations();
                         } else {
                             showMessage(updateResult.message, 'error');
                         }
@@ -335,11 +342,11 @@
         // 등록 정보 삭제
         async function deleteRegistration(id) {
             if (confirm('정말 삭제하시겠습니까?')) {
-                try {
+            try {
                     const response = await fetchWithAuth(`/api/registrations/${id}`, {
-                        method: 'DELETE'
-                    });
-                    
+                    method: 'DELETE'
+                });
+
                     const result = await response.json();
                     if (result.success) {
                         showMessage('삭제가 완료되었습니다.', 'success');
