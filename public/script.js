@@ -7,11 +7,20 @@ const programs = [
     { id: 5, name: '가족 복지 프로그램' }
 ];
 
-document.addEventListener('DOMContentLoaded', function() {
+// 페이지 로드 시 실행
+window.addEventListener('load', function() {
+    console.log('Page loaded');
+    initializeForm();
+});
+
+// 폼 초기화 함수
+function initializeForm() {
     const form = document.getElementById('registrationForm');
     const submitButton = document.getElementById('submitButton');
     const messageElement = document.getElementById('message');
     const programSelect = document.getElementById('program');
+    
+    console.log('Form elements:', { form, submitButton, messageElement, programSelect });
     
     // 프로그램 목록 로드
     if (programSelect) {
@@ -42,10 +51,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     privacyAgreement: document.getElementById('privacyAgreement').checked ? 1 : 0
                 };
 
+                console.log('Form data:', formData);
+
                 // API 엔드포인트 URL 설정
                 const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                     ? 'http://localhost:3000/api/registrations'
                     : 'https://e-cock.onrender.com/api/registrations';
+
+                console.log('API URL:', apiUrl);
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -56,6 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const result = await response.json();
+                console.log('API response:', result);
                 
                 if (!response.ok) {
                     throw new Error(result.message || '등록 중 오류가 발생했습니다.');
@@ -76,4 +90,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}

@@ -1,7 +1,7 @@
 {
   "name": "e-cock",
   "version": "1.0.0",
-  "description": "Social Welfare Registration System",
+  "description": "사회복지 프로그램 접수 시스템",
   "main": "server.js",
   "homepage": "https://kdswc0475.github.io/e-cock/",
   "scripts": {
@@ -11,18 +11,23 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d public -b gh-pages"
   },
-  "engines": {
-    "node": ">=14.0.0"
-  },
+  "keywords": [
+    "social-welfare",
+    "registration",
+    "program"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.7",
     "cors": "^2.8.5",
-    "body-parser": "^1.20.2",
-    "xlsx": "^0.18.5"
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3",
-    "gh-pages": "^6.1.1"
+    "gh-pages": "^6.1.1",
+    "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
