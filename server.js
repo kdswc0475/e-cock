@@ -25,7 +25,9 @@ let db;
 
 // CORS 설정
 app.use(cors({
-    origin: '*',
+    origin: NODE_ENV === 'production' 
+        ? 'https://e-cock.onrender.com'
+        : 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true

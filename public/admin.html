@@ -234,6 +234,9 @@
             { id: 'belly-dance', name: '밸리댄스' }
         ];
 
+        // API 기본 URL 설정
+        const API_BASE_URL = window.location.origin;
+
         function getLivingTypeText(type) {
             const types = {
                 'general': '일반',
@@ -263,7 +266,7 @@
             const tbody = document.getElementById('registrationsBody');
             
             try {
-                const response = await fetch('http://localhost:3000/registrations');
+                const response = await fetch(`${API_BASE_URL}/api/registrations`);
                 const data = await response.json();
 
                 if (!data.success) {
@@ -321,7 +324,7 @@
             });
 
             // 기존 데이터 불러오기
-            fetch(`http://localhost:3000/registrations/${id}`)
+            fetch(`${API_BASE_URL}/registrations/${id}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -345,7 +348,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert(`데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`);
+                    showMessage(`데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
                 });
         }
 
@@ -369,7 +372,7 @@
             };
 
             try {
-                const response = await fetch(`http://localhost:3000/registrations/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/registrations/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -380,14 +383,14 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('수정이 완료되었습니다.');
+                    showMessage('수정이 완료되었습니다.', 'success');
                     closeModal();
                     loadRegistrations();
                 } else {
-                    alert(data.message || '수정 중 오류가 발생했습니다.');
+                    showMessage(data.message || '수정 중 오류가 발생했습니다.', 'error');
                 }
             } catch (error) {
-                alert('서버 연결에 실패했습니다.');
+                showMessage('서버 연결에 실패했습니다.', 'error');
             }
         });
 
@@ -398,25 +401,21 @@
             }
 
             try {
-                const response = await fetch(`http://localhost:3000/registrations/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/registrations/${id}`, {
                     method: 'DELETE'
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
                 const data = await response.json();
 
-                if (!data.success) {
+                if (response.ok && data.success) {
+                    showMessage('삭제가 완료되었습니다.', 'success');
+                    loadRegistrations();
+                } else {
                     throw new Error(data.message || '삭제 중 오류가 발생했습니다.');
                 }
-
-                alert('삭제가 완료되었습니다.');
-                loadRegistrations();
             } catch (error) {
                 console.error('Error:', error);
-                alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+                showMessage(`삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
             }
         }
 
@@ -446,6 +445,13 @@
                 console.error('Error:', error);
                 showMessage('데이터 다운로드 중 오류가 발생했습니다.', 'error');
             }
+        }
+
+        // 메시지 표시 함수
+        function showMessage(message, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            messageElement.className = `message ${type}`;
         }
 
         // 페이지 로드 시 데이터 불러오기
