@@ -21,21 +21,14 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // CORS 설정
-app.use(cors({
-    origin: NODE_ENV === 'production' 
-        ? 'https://e-cock.onrender.com'
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
-// 미들웨어 설정
+// JSON 파싱
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// 정적 파일 서빙 설정
+// 정적 파일 제공 설정
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/e-cock', express.static(path.join(__dirname, 'public')));
 
 // 요청 로깅 미들웨어
 app.use((req, res, next) => {
@@ -203,7 +196,8 @@ let db;
 
 function connectDatabase() {
     return new Promise((resolve, reject) => {
-        db = new sqlite3.Database(dbPath, (err) => {
+        console.log('Connecting to database at:', dbPath);
+        db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
             if (err) {
                 console.error('Error opening database:', err);
                 reject(err);
@@ -235,46 +229,31 @@ function connectDatabase() {
     });
 }
 
-// 서버 시작 함수
+// 서버 시작
 async function startServer() {
     try {
         await connectDatabase();
-        
-        const server = app.listen(PORT, () => {
+        app.listen(PORT, () => {
             console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
         });
-
-        // 정상적인 종료 처리
-        process.on('SIGTERM', () => {
-            console.log('Received SIGTERM. Performing cleanup...');
-            server.close(() => {
-                db.close(() => {
-                    console.log('Server and database connections closed.');
-                    process.exit(0);
-                });
-            });
-        });
-
-        // 예기치 않은 에러 처리
-        process.on('uncaughtException', (err) => {
-            console.error('Uncaught Exception:', err);
-            server.close(() => {
-                db.close(() => {
-                    console.log('Server and database connections closed due to error.');
-                    process.exit(1);
-                });
-            });
-        });
-
-        // 프로세스 종료 처리
-        process.on('exit', (code) => {
-            console.log(`Process exit with code: ${code}`);
-        });
-
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
     }
 }
+
+// 종료 처리
+process.on('SIGTERM', () => {
+    console.log('Received SIGTERM. Performing cleanup...');
+    if (db) {
+        db.close(() => {
+            console.log('Server and database connections closed.');
+            process.exit(0);
+        });
+    } else {
+        console.log('Server connections closed.');
+        process.exit(0);
+    }
+});
 
 startServer(); 
