@@ -15,6 +15,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitButton = document.getElementById('submitButton');
     const messageElement = document.getElementById('message');
     
+    // 프로그램 목록 로드
+    if (programSelect && window.programs) {
+        window.programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program.id;
+            option.textContent = program.name;
+            programSelect.appendChild(option);
+        });
+    }
+    
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -25,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const formData = {
                     name: document.getElementById('name').value,
-                    gender: document.querySelector('input[name="gender"]:checked').value,
+                    gender: document.querySelector('select[name="gender"]').value,
                     address: document.getElementById('address').value,
                     phone: document.getElementById('phone').value,
                     birthdate: document.getElementById('birthdate').value,
