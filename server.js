@@ -33,6 +33,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // 정적 파일 서빙 설정
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/e-cock', express.static(path.join(__dirname, 'public')));
 
 // 요청 로깅 미들웨어
 app.use((req, res, next) => {
@@ -42,7 +43,28 @@ app.use((req, res, next) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', environment: NODE_ENV });
+    const used = process.memoryUsage();
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV,
+        serverUrl: NODE_ENV === 'production' ? 'https://e-cock.onrender.com' : `http://localhost:${PORT}`,
+        port: PORT.toString(),
+        database: {
+            status: db ? 'connected' : 'disconnected',
+            path: dbPath
+        },
+        memory: {
+            heapUsed: `${Math.round(used.heapUsed / 1024 / 1024)}MB`,
+            heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)}MB`,
+            rss: `${Math.round(used.rss / 1024 / 1024)}MB`
+        },
+        uptime: `${Math.round(process.uptime())} seconds`,
+        files: {
+            'index.html': fs.existsSync(path.join(__dirname, 'public', 'index.html')) ? 'exists' : 'missing',
+            'admin.html': fs.existsSync(path.join(__dirname, 'public', 'admin.html')) ? 'exists' : 'missing'
+        }
+    });
 });
 
 // API Routes
