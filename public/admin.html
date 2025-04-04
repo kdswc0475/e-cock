@@ -152,7 +152,7 @@
         <h1>접수 관리</h1>
         <div class="button-group">
             <button class="refresh-btn" onclick="loadRegistrations()">새로고침</button>
-            <button class="excel-btn" onclick="exportToExcel()">데이터 다운로드</button>
+            <button class="excel-btn" onclick="exportData()">데이터 다운로드</button>
         </div>
         <div id="message"></div>
         <table id="registrationsTable">
@@ -249,39 +249,43 @@
         }
 
         function getProgramText(program) {
-            const programMap = {
+            const programs = {
                 'ballet': '유아발레교실',
                 'kpop-a': '아동K-POP 댄스(A반)',
                 'kpop-b': '아동K-POP 댄스(B반)',
-                'yoga': '성인요가',
-                'diet-dance': '다이어트 댄스',
-                'guitar': '성인 통기타',
+                'piano': '피아노교실',
+                'art': '미술교실',
+                'taekwondo': '태권도교실',
+                'english': '영어교실',
+                'coding': '코딩교실',
+                'soccer': '축구교실',
+                'basketball': '농구교실',
+                'yoga': '요가',
+                'pilates': '필라테스',
+                'gym': '헬스',
+                'swimming': '수영',
+                'tennis': '테니스',
+                'badminton': '배드민턴',
+                'table-tennis': '탁구',
                 'belly-dance': '밸리댄스'
             };
-            return programMap[program] || program;
+            return programs[program] || program;
         }
 
+        // 데이터 로드
         async function loadRegistrations() {
-            const messageElement = document.getElementById('message');
-            const tbody = document.getElementById('registrationsBody');
-            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/registrations`);
-                const data = await response.json();
+                const result = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.message);
+                if (!result.success) {
+                    throw new Error(result.message);
                 }
 
+                const tbody = document.getElementById('registrationsBody');
                 tbody.innerHTML = '';
-                
-                if (data.data.length === 0) {
-                    messageElement.textContent = '등록된 접수 정보가 없습니다.';
-                    messageElement.className = 'message';
-                    return;
-                }
 
-                data.data.forEach(registration => {
+                result.data.forEach(registration => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${registration.id}</td>
@@ -292,7 +296,7 @@
                         <td>${registration.birthdate}</td>
                         <td>${getLivingTypeText(registration.livingType)}</td>
                         <td>${getProgramText(registration.program)}</td>
-                        <td>${new Date(registration.registrationDate).toLocaleString()}</td>
+                        <td>${registration.registrationDate}</td>
                         <td class="action-buttons">
                             <button class="edit-btn" onclick="openEditModal(${registration.id})">수정</button>
                             <button class="delete-btn" onclick="deleteRegistration(${registration.id})">삭제</button>
@@ -300,65 +304,45 @@
                     `;
                     tbody.appendChild(row);
                 });
-
-                messageElement.textContent = '';
-                messageElement.className = '';
             } catch (error) {
-                messageElement.textContent = `오류 발생: ${error.message}`;
-                messageElement.className = 'message error';
+                console.error('Error:', error);
+                showMessage(error.message, 'error');
             }
         }
 
-        function openEditModal(id) {
-            const modal = document.getElementById('editModal');
-            const editForm = document.getElementById('editForm');
-            
-            // 프로그램 드롭다운 채우기
-            const programSelect = document.getElementById('editProgram');
-            programSelect.innerHTML = '<option value="">선택하세요</option>';
-            programs.forEach(program => {
-                const option = document.createElement('option');
-                option.value = program.id;
-                option.textContent = program.name;
-                programSelect.appendChild(option);
-            });
+        // 수정 모달 열기
+        async function openEditModal(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/registrations/${id}`);
+                const result = await response.json();
 
-            // 기존 데이터 불러오기
-            fetch(`${API_BASE_URL}/registrations/${id}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || '데이터를 불러오는데 실패했습니다.');
-                    }
-                    const registration = data.data;
-                    document.getElementById('editId').value = registration.id;
-                    document.getElementById('editName').value = registration.name;
-                    document.getElementById('editGender').value = registration.gender;
-                    document.getElementById('editAddress').value = registration.address;
-                    document.getElementById('editPhone').value = registration.phone;
-                    document.getElementById('editBirthdate').value = registration.birthdate;
-                    document.getElementById('editLivingType').value = registration.livingType;
-                    document.getElementById('editProgram').value = registration.program;
-                    modal.style.display = 'block';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showMessage(`데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
-                });
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                const registration = result.data;
+                
+                // 폼 필드 채우기
+                document.getElementById('editId').value = registration.id;
+                document.getElementById('editName').value = registration.name;
+                document.getElementById('editGender').value = registration.gender;
+                document.getElementById('editAddress').value = registration.address;
+                document.getElementById('editPhone').value = registration.phone;
+                document.getElementById('editBirthdate').value = registration.birthdate;
+                document.getElementById('editLivingType').value = registration.livingType;
+                document.getElementById('editProgram').value = registration.program;
+
+                // 모달 표시
+                document.getElementById('editModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage(error.message, 'error');
+            }
         }
 
-        function closeModal() {
-            document.getElementById('editModal').style.display = 'none';
-        }
-
-        // 수정 폼 제출
-        document.getElementById('editForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // 수정 제출
+        async function submitEdit(event) {
+            event.preventDefault();
             
             const id = document.getElementById('editId').value;
             const formData = {
@@ -372,7 +356,7 @@
             };
 
             try {
-                const response = await fetch(`${API_BASE_URL}/registrations/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/api/registrations/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -380,78 +364,84 @@
                     body: JSON.stringify(formData)
                 });
 
-                const data = await response.json();
+                const result = await response.json();
 
-                if (response.ok) {
-                    showMessage('수정이 완료되었습니다.', 'success');
-                    closeModal();
-                    loadRegistrations();
-                } else {
-                    showMessage(data.message || '수정 중 오류가 발생했습니다.', 'error');
+                if (!result.success) {
+                    throw new Error(result.message);
                 }
-            } catch (error) {
-                showMessage('서버 연결에 실패했습니다.', 'error');
-            }
-        });
 
-        // 삭제 기능
+                showMessage('수정이 완료되었습니다.', 'success');
+                closeModal();
+                loadRegistrations();
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // 삭제
         async function deleteRegistration(id) {
             if (!confirm('정말로 이 접수를 삭제하시겠습니까?')) {
                 return;
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/registrations/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/api/registrations/${id}`, {
                     method: 'DELETE'
                 });
 
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    showMessage('삭제가 완료되었습니다.', 'success');
-                    loadRegistrations();
-                } else {
-                    throw new Error(data.message || '삭제 중 오류가 발생했습니다.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage(`삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
-            }
-        }
-
-        async function exportToExcel() {
-            try {
-                const response = await fetch('/export-data');
                 const result = await response.json();
-                
-                if (result.success) {
-                    // JSON 데이터를 파일로 다운로드
-                    const dataStr = JSON.stringify(result.data, null, 2);
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = window.URL.createObjectURL(dataBlob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `registrations_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                    
-                    showMessage('데이터가 다운로드되었습니다.', 'success');
-                } else {
-                    showMessage('데이터 내보내기 중 오류가 발생했습니다.', 'error');
+
+                if (!result.success) {
+                    throw new Error(result.message);
                 }
+
+                showMessage('삭제가 완료되었습니다.', 'success');
+                loadRegistrations();
             } catch (error) {
                 console.error('Error:', error);
-                showMessage('데이터 다운로드 중 오류가 발생했습니다.', 'error');
+                showMessage(error.message, 'error');
             }
         }
 
-        // 메시지 표시 함수
+        // 데이터 내보내기
+        async function exportData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/export`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                // JSON 데이터를 파일로 다운로드
+                const dataStr = JSON.stringify(result.data, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = window.URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `registrations_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showMessage('데이터가 다운로드되었습니다.', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // 유틸리티 함수들
         function showMessage(message, type) {
             const messageElement = document.getElementById('message');
             messageElement.textContent = message;
             messageElement.className = `message ${type}`;
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
         }
 
         // 페이지 로드 시 데이터 불러오기
