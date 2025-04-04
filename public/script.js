@@ -1,23 +1,21 @@
-import { programs } from './programs.js';
+// 프로그램 목록 정의
+const programs = [
+    { id: 1, name: '노인 복지 프로그램' },
+    { id: 2, name: '장애인 복지 프로그램' },
+    { id: 3, name: '아동 복지 프로그램' },
+    { id: 4, name: '청소년 복지 프로그램' },
+    { id: 5, name: '가족 복지 프로그램' }
+];
 
-// Populate program dropdown
-const programSelect = document.getElementById('program');
-programs.forEach(program => {
-    const option = document.createElement('option');
-    option.value = program.id;
-    option.textContent = program.name;
-    programSelect.appendChild(option);
-});
-
-// Handle form submission
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('registrationForm');
     const submitButton = document.getElementById('submitButton');
     const messageElement = document.getElementById('message');
+    const programSelect = document.getElementById('program');
     
     // 프로그램 목록 로드
-    if (programSelect && window.programs) {
-        window.programs.forEach(program => {
+    if (programSelect) {
+        programs.forEach(program => {
             const option = document.createElement('option');
             option.value = program.id;
             option.textContent = program.name;
