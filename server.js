@@ -15,7 +15,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 const app = express();
 
 // 데이터 디렉토리 생성
-const dataDir = path.join(__dirname, 'data');
+const dataDir = NODE_ENV === 'production'
+    ? '/opt/render/project/src/data'
+    : path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     try {
         fs.mkdirSync(dataDir, { recursive: true, mode: 0o777 });
@@ -26,8 +28,11 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // 데이터베이스 파일 경로
-const dbPath = path.join(dataDir, 'registrations.db');
+const dbPath = NODE_ENV === 'production'
+    ? '/opt/render/project/src/data/registrations.db'
+    : path.join(dataDir, 'registrations.db');
 console.log('Database path:', dbPath);
+console.log('Environment:', NODE_ENV);
 
 // CORS 설정
 app.use(cors());
