@@ -8,6 +8,8 @@ const fs = require('fs');
 // 환경 변수 설정
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const PORT = process.env.PORT || 3000;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 
 // Express 앱 생성
 const app = express();
@@ -67,9 +69,27 @@ app.get('/health', (req, res) => {
     });
 });
 
+// 관리자 인증 미들웨어
+const authenticateAdmin = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
+    }
+
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
+    const [username, password] = credentials.split(':');
+
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        next();
+    } else {
+        res.status(401).json({ success: false, message: '잘못된 인증 정보입니다.' });
+    }
+};
+
 // API Routes
 // 모든 등록 데이터 조회
-app.get('/api/registrations', (req, res) => {
+app.get('/api/registrations', authenticateAdmin, (req, res) => {
     db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
         if (err) {
             console.error('Error fetching registrations:', err);
@@ -80,7 +100,7 @@ app.get('/api/registrations', (req, res) => {
 });
 
 // 단일 등록 데이터 조회
-app.get('/api/registrations/:id', (req, res) => {
+app.get('/api/registrations/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
     db.get('SELECT * FROM registrations WHERE id = ?', [id], (err, row) => {
         if (err) {
@@ -116,7 +136,7 @@ app.post('/api/registrations', (req, res) => {
 });
 
 // 등록 데이터 수정
-app.put('/api/registrations/:id', (req, res) => {
+app.put('/api/registrations/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
     const { name, gender, address, phone, birthdate, livingType, program } = req.body;
     
@@ -143,7 +163,7 @@ app.put('/api/registrations/:id', (req, res) => {
 });
 
 // 등록 데이터 삭제
-app.delete('/api/registrations/:id', (req, res) => {
+app.delete('/api/registrations/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
     db.run('DELETE FROM registrations WHERE id = ?', [id], function(err) {
         if (err) {
@@ -158,7 +178,7 @@ app.delete('/api/registrations/:id', (req, res) => {
 });
 
 // 데이터 내보내기
-app.get('/api/export', (req, res) => {
+app.get('/api/export', authenticateAdmin, (req, res) => {
     db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
         if (err) {
             console.error('Error exporting data:', err);

@@ -145,10 +145,70 @@
         .excel-btn:hover {
             background-color: #219a52;
         }
+
+        #loginContainer {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #adminContainer {
+            display: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .login-btn:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="loginContainer">
+        <h1>관리자 로그인</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">아이디</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="login-btn">로그인</button>
+        </form>
+        <div id="loginMessage" class="message"></div>
+    </div>
+
+    <div id="adminContainer" class="container">
         <h1>접수 관리</h1>
         <div class="button-group">
             <button class="refresh-btn" onclick="loadRegistrations()">새로고침</button>
@@ -224,6 +284,55 @@
     </div>
 
     <script>
+        let authToken = '';
+        
+        // 로그인 처리
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            authToken = btoa(`${username}:${password}`);
+            
+            try {
+                const response = await fetch('/api/registrations', {
+                    headers: {
+                        'Authorization': `Basic ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('loginContainer').style.display = 'none';
+                    document.getElementById('adminContainer').style.display = 'block';
+                    loadRegistrations();
+                } else {
+                    const data = await response.json();
+                    document.getElementById('loginMessage').textContent = data.message;
+                    document.getElementById('loginMessage').className = 'message error';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('loginMessage').textContent = '로그인 중 오류가 발생했습니다.';
+                document.getElementById('loginMessage').className = 'message error';
+            }
+        });
+
+        // API 요청에 인증 헤더 추가
+        async function fetchWithAuth(url, options = {}) {
+            const headers = {
+                ...options.headers,
+                'Authorization': `Basic ${authToken}`
+            };
+            
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                document.getElementById('loginContainer').style.display = 'block';
+                document.getElementById('adminContainer').style.display = 'none';
+                throw new Error('인증이 필요합니다.');
+            }
+            return response;
+        }
+
         const programs = [
             { id: 'ballet', name: '유아발레교실' },
             { id: 'kpop-a', name: '아동K-POP 댄스(A반)' },
@@ -275,38 +384,17 @@
         // 데이터 로드
         async function loadRegistrations() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/registrations`);
+                const response = await fetchWithAuth('/api/registrations');
                 const result = await response.json();
-
-                if (!result.success) {
-                    throw new Error(result.message);
+                
+                if (result.success) {
+                    updateTable(result.data);
+                } else {
+                    showMessage(result.message, 'error');
                 }
-
-                const tbody = document.getElementById('registrationsBody');
-                tbody.innerHTML = '';
-
-                result.data.forEach(registration => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${registration.id}</td>
-                        <td>${registration.name}</td>
-                        <td>${registration.gender === 'male' ? '남성' : '여성'}</td>
-                        <td>${registration.address}</td>
-                        <td>${registration.phone}</td>
-                        <td>${registration.birthdate}</td>
-                        <td>${getLivingTypeText(registration.livingType)}</td>
-                        <td>${getProgramText(registration.program)}</td>
-                        <td>${registration.registrationDate}</td>
-                        <td class="action-buttons">
-                            <button class="edit-btn" onclick="openEditModal(${registration.id})">수정</button>
-                            <button class="delete-btn" onclick="deleteRegistration(${registration.id})">삭제</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
             } catch (error) {
-                console.error('Error:', error);
-                showMessage(error.message, 'error');
+                console.error('Error loading registrations:', error);
+                showMessage('데이터를 불러오는데 실패했습니다.', 'error');
             }
         }
 
