@@ -168,6 +168,15 @@ app.get('/api/export', (req, res) => {
     });
 });
 
+// 기본 경로 리다이렉션
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // 데이터베이스 연결
 const dbPath = path.join(dataDir, 'registrations.db');
 let db;
