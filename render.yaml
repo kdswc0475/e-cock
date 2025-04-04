@@ -1,15 +1,18 @@
 services:
   - type: web
     name: e-cock
-    env: docker
+    env: node
     region: singapore
     plan: free
-    healthCheckPath: /health
+    buildCommand: npm install
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "3000"
+        value: 3000
+    healthCheckPath: /health
+    autoDeploy: true
     domains:
       - e-cock.onrender.com
     databases:
