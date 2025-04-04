@@ -422,17 +422,24 @@
 
         async function exportToExcel() {
             try {
-                const response = await fetch('http://localhost:3000/export-excel');
+                const response = await fetch('/export-data');
                 const data = await response.json();
-
+                
                 if (data.success) {
-                    alert('Excel 파일이 생성되었습니다.\n경로: ' + data.filePath);
+                    showMessage('CSV 파일이 생성되었습니다.', 'success');
+                    // CSV 파일 다운로드 링크 생성
+                    const link = document.createElement('a');
+                    link.href = data.filePath;
+                    link.download = 'registrations.csv';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                 } else {
-                    throw new Error(data.message || 'Excel 파일 생성 중 오류가 발생했습니다.');
+                    showMessage('파일 생성 중 오류가 발생했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Excel 파일 생성 중 오류가 발생했습니다: ' + error.message);
+                showMessage('파일 다운로드 중 오류가 발생했습니다.', 'error');
             }
         }
 

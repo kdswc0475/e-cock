@@ -122,8 +122,8 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Excel 생성 엔드포인트를 CSV로 변경
-app.get('/export-excel', (req, res) => {
+// 데이터 내보내기 엔드포인트
+app.get('/export-data', (req, res) => {
     try {
         const exportDir = path.join(__dirname, 'exports');
         if (!fs.existsSync(exportDir)) {
