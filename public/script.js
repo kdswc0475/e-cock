@@ -13,6 +13,7 @@ programs.forEach(program => {
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('registrationForm');
     const submitButton = document.getElementById('submitButton');
+    const messageElement = document.getElementById('message');
     
     if (form) {
         form.addEventListener('submit', async function(e) {
@@ -33,7 +34,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     privacyAgreement: document.getElementById('privacyAgreement').checked ? 1 : 0
                 };
 
-                const response = await fetch('/api/registrations', {
+                // API 엔드포인트 URL 설정
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:3000/api/registrations'
+                    : 'https://e-cock.onrender.com/api/registrations';
+
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -47,12 +53,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(result.message || '등록 중 오류가 발생했습니다.');
                 }
 
-                alert('접수가 완료되었습니다.');
+                messageElement.textContent = '접수가 완료되었습니다.';
+                messageElement.className = 'success';
                 form.reset();
                 
             } catch (error) {
                 console.error('Registration error:', error);
-                alert(error.message || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                messageElement.textContent = error.message || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                messageElement.className = 'error';
                 
             } finally {
                 submitButton.disabled = false;

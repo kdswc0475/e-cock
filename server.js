@@ -66,33 +66,33 @@ async function connectDatabase(retries = 5) {
             
             // 메모리 데이터베이스 사용
             const database = new sqlite3.Database(':memory:', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-                if (err) {
+    if (err) {
                     console.error(`Database connection error (attempt ${attempt}):`, err);
                     if (attempt < retries) {
                         setTimeout(() => tryConnect(attempt + 1), 5000);
-                    } else {
+    } else {
                         reject(err);
-                    }
+    }
                 } else {
                     console.log('Connected to in-memory SQLite database');
-                    
+
                     // 테이블 생성
                     database.run(`CREATE TABLE IF NOT EXISTS registrations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        gender TEXT NOT NULL,
-                        address TEXT NOT NULL,
-                        phone TEXT NOT NULL,
-                        birthdate TEXT NOT NULL,
-                        livingType TEXT NOT NULL,
-                        program TEXT NOT NULL,
-                        privacyAgreement INTEGER NOT NULL,
-                        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        gender TEXT NOT NULL,
+        address TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        birthdate TEXT NOT NULL,
+        livingType TEXT NOT NULL,
+        program TEXT NOT NULL,
+        privacyAgreement INTEGER NOT NULL,
+        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
                     )`, (err) => {
-                        if (err) {
-                            console.error('Error creating table:', err);
+        if (err) {
+            console.error('Error creating table:', err);
                             reject(err);
-                        } else {
+        } else {
                             console.log('Table created successfully');
                             resolve(database);
                         }
@@ -278,20 +278,20 @@ function getProgramText(program) {
 // API 엔드포인트: 등록 데이터 조회
 app.get('/api/registrations', (req, res) => {
     try {
-        db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
-            if (err) {
+    db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
+        if (err) {
                 console.error('Error fetching registrations:', err);
-                return res.status(500).json({
-                    success: false,
-                    message: '데이터 조회 중 오류가 발생했습니다.',
-                    error: err.message
-                });
-            }
-            res.json({
-                success: true,
-                data: rows
+            return res.status(500).json({ 
+                success: false,
+                message: '데이터 조회 중 오류가 발생했습니다.',
+                error: err.message
             });
+        }
+        res.json({ 
+            success: true,
+            data: rows
         });
+    });
     } catch (error) {
         console.error('Error in /api/registrations:', error);
         res.status(500).json({
