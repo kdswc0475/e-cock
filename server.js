@@ -125,14 +125,6 @@ app.get('/admin', (req, res) => {
 // 데이터 내보내기 엔드포인트
 app.get('/export-data', (req, res) => {
     try {
-        const exportDir = path.join(__dirname, 'exports');
-        if (!fs.existsSync(exportDir)) {
-            fs.mkdirSync(exportDir);
-        }
-
-        const fileName = `registrations_${new Date().toISOString().split('T')[0]}.csv`;
-        const filePath = path.join(exportDir, fileName);
-
         db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
             if (err) {
                 console.error('Error retrieving data:', err);
@@ -142,43 +134,32 @@ app.get('/export-data', (req, res) => {
                 });
             }
 
-            // CSV 헤더
-            const headers = ['ID', '이름', '성별', '주소', '연락처', '생년월일', '생활구분', '프로그램', '개인정보동의', '접수일시'];
-            
             // 데이터 변환
-            const csvRows = rows.map(row => [
-                row.id,
-                row.name,
-                row.gender === 'male' ? '남성' : '여성',
-                row.address,
-                row.phone,
-                row.birthdate,
-                getLivingTypeText(row.livingType),
-                getProgramText(row.program),
-                row.privacyAgreement ? '동의' : '미동의',
-                row.registrationDate
-            ]);
+            const formattedData = rows.map(row => ({
+                'ID': row.id,
+                '이름': row.name,
+                '성별': row.gender === 'male' ? '남성' : '여성',
+                '주소': row.address,
+                '연락처': row.phone,
+                '생년월일': row.birthdate,
+                '생활구분': getLivingTypeText(row.livingType),
+                '프로그램': getProgramText(row.program),
+                '개인정보동의': row.privacyAgreement ? '동의' : '미동의',
+                '접수일시': row.registrationDate
+            }));
 
-            // CSV 문자열 생성
-            const csvContent = [
-                headers.join(','),
-                ...csvRows.map(row => row.join(','))
-            ].join('\n');
-
-            // 파일 저장
-            fs.writeFileSync(filePath, csvContent, 'utf-8');
-
+            // JSON 응답 전송
             res.json({
                 success: true,
-                message: 'CSV 파일이 생성되었습니다.',
-                filePath: filePath
+                message: '데이터가 준비되었습니다.',
+                data: formattedData
             });
         });
     } catch (error) {
-        console.error('Error creating CSV file:', error);
+        console.error('Error exporting data:', error);
         res.status(500).json({
             success: false,
-            message: 'CSV 파일 생성 중 오류가 발생했습니다.'
+            message: '데이터 내보내기 중 오류가 발생했습니다.'
         });
     }
 });

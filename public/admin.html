@@ -152,7 +152,7 @@
         <h1>접수 관리</h1>
         <div class="button-group">
             <button class="refresh-btn" onclick="loadRegistrations()">새로고침</button>
-            <button class="excel-btn" onclick="exportToExcel()">Excel 다운로드</button>
+            <button class="excel-btn" onclick="exportToExcel()">데이터 다운로드</button>
         </div>
         <div id="message"></div>
         <table id="registrationsTable">
@@ -423,23 +423,28 @@
         async function exportToExcel() {
             try {
                 const response = await fetch('/export-data');
-                const data = await response.json();
+                const result = await response.json();
                 
-                if (data.success) {
-                    showMessage('CSV 파일이 생성되었습니다.', 'success');
-                    // CSV 파일 다운로드 링크 생성
+                if (result.success) {
+                    // JSON 데이터를 파일로 다운로드
+                    const dataStr = JSON.stringify(result.data, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(dataBlob);
                     const link = document.createElement('a');
-                    link.href = data.filePath;
-                    link.download = 'registrations.csv';
+                    link.href = url;
+                    link.download = `registrations_${new Date().toISOString().split('T')[0]}.json`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showMessage('데이터가 다운로드되었습니다.', 'success');
                 } else {
-                    showMessage('파일 생성 중 오류가 발생했습니다.', 'error');
+                    showMessage('데이터 내보내기 중 오류가 발생했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showMessage('파일 다운로드 중 오류가 발생했습니다.', 'error');
+                showMessage('데이터 다운로드 중 오류가 발생했습니다.', 'error');
             }
         }
 
