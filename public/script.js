@@ -10,16 +10,16 @@ const programs = [
 ];
 
 // API 기본 URL 설정
-const API_BASE_URL = window.BASE_URL || '';
+const API_BASE_URL = window.location.origin;
 
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded');
+    console.log('DOM loaded, initializing program list...');
     
     // 프로그램 목록 로드
     const programSelect = document.getElementById('program');
     if (programSelect) {
-        console.log('Program select found');
+        console.log('Program select found, current options:', programSelect.options.length);
         
         // 기존 옵션 제거 (첫 번째 옵션인 "선택하세요"는 유지)
         while (programSelect.options.length > 1) {
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
             option.value = program;
             option.textContent = program;
             programSelect.appendChild(option);
+            console.log('Added program:', program);
         });
         
         console.log('Program options loaded:', programSelect.options.length);
@@ -48,8 +49,6 @@ function initializeForm() {
     const form = document.getElementById('registrationForm');
     const submitButton = document.getElementById('submitButton');
     const messageElement = document.getElementById('message');
-    
-    console.log('Form elements:', { form, submitButton, messageElement });
     
     if (form) {
         form.addEventListener('submit', async function(e) {
@@ -69,12 +68,13 @@ function initializeForm() {
                     program: document.getElementById('program').value
                 };
 
-                console.log('Form data:', formData);
+                console.log('Submitting form data:', formData);
 
                 const response = await fetch(`${API_BASE_URL}/api/registrations`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
                     },
                     body: JSON.stringify(formData)
                 });
