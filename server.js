@@ -9,7 +9,6 @@ const fs = require('fs');
 // 환경 변수 설정
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const PORT = process.env.PORT || 3000;
-const DATABASE_URL = process.env.DATABASE_URL || './registrations.db';
 
 // 서버 URL 설정
 const SERVER_URL = NODE_ENV === 'production'
@@ -18,7 +17,6 @@ const SERVER_URL = NODE_ENV === 'production'
 
 console.log('Environment:', NODE_ENV);
 console.log('Port:', PORT);
-console.log('Database URL:', DATABASE_URL);
 console.log('Server URL:', SERVER_URL);
 
 const app = express();
@@ -28,7 +26,7 @@ let db;
 
 // CORS 설정
 app.use(cors({
-    origin: [SERVER_URL, 'https://e-cock.onrender.com', 'http://localhost:3000'],
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -66,33 +64,33 @@ async function connectDatabase(retries = 5) {
             
             // 메모리 데이터베이스 사용
             const database = new sqlite3.Database(':memory:', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) {
+                if (err) {
                     console.error(`Database connection error (attempt ${attempt}):`, err);
                     if (attempt < retries) {
                         setTimeout(() => tryConnect(attempt + 1), 5000);
-    } else {
+                    } else {
                         reject(err);
-    }
+                    }
                 } else {
                     console.log('Connected to in-memory SQLite database');
 
                     // 테이블 생성
                     database.run(`CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        gender TEXT NOT NULL,
-        address TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        birthdate TEXT NOT NULL,
-        livingType TEXT NOT NULL,
-        program TEXT NOT NULL,
-        privacyAgreement INTEGER NOT NULL,
-        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        gender TEXT NOT NULL,
+                        address TEXT NOT NULL,
+                        phone TEXT NOT NULL,
+                        birthdate TEXT NOT NULL,
+                        livingType TEXT NOT NULL,
+                        program TEXT NOT NULL,
+                        privacyAgreement INTEGER NOT NULL,
+                        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
                     )`, (err) => {
-        if (err) {
-            console.error('Error creating table:', err);
+                        if (err) {
+                            console.error('Error creating table:', err);
                             reject(err);
-        } else {
+                        } else {
                             console.log('Table created successfully');
                             resolve(database);
                         }
@@ -104,92 +102,25 @@ async function connectDatabase(retries = 5) {
     });
 }
 
-// Health check endpoint with detailed status
-app.get('/health', async (req, res) => {
-    try {
-        // 데이터베이스 연결 상태 확인
-        const dbStatus = await new Promise((resolve) => {
-            db.get('SELECT 1', (err) => {
-                resolve(err ? 'disconnected' : 'connected');
-            });
-        });
-
-        // 메모리 사용량 확인
-        const memoryUsage = process.memoryUsage();
-
-        // 서버 상태 정보 구성
-        const status = {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            environment: NODE_ENV,
-            serverUrl: SERVER_URL,
-            port: PORT,
-            database: {
-                status: dbStatus,
-                path: DATABASE_URL
-            },
-            memory: {
-                heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
-                heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
-                rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB'
-            },
-            uptime: Math.floor(process.uptime()) + ' seconds'
-        };
-
-        // 파일 시스템 확인
-        const indexPath = path.join(__dirname, 'index.html');
-        const adminPath = path.join(__dirname, 'admin.html');
-        
-        status.files = {
-            'index.html': fs.existsSync(indexPath) ? 'exists' : 'missing',
-            'admin.html': fs.existsSync(adminPath) ? 'exists' : 'missing'
-        };
-
-        res.json(status);
-    } catch (error) {
-        console.error('Health check error:', error);
-        res.status(500).json({
-            status: 'unhealthy',
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV,
+        serverUrl: SERVER_URL,
+        port: PORT
+    });
 });
 
 // 기본 라우트 핸들러
 app.get('/', (req, res) => {
-    try {
-        const indexPath = path.join(__dirname, 'public', 'index.html');
-        console.log('Serving index.html from:', indexPath);
-        
-        if (!fs.existsSync(indexPath)) {
-            console.error('index.html not found at:', indexPath);
-            return res.status(404).send('index.html not found');
-        }
-        
-        res.sendFile(indexPath);
-    } catch (error) {
-        console.error('Error serving index.html:', error);
-        res.status(500).send('Internal Server Error');
-    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 관리자 페이지 라우트
 app.get('/admin', (req, res) => {
-    try {
-        const adminPath = path.join(__dirname, 'public', 'admin.html');
-        console.log('Serving admin.html from:', adminPath);
-        
-        if (!fs.existsSync(adminPath)) {
-            console.error('admin.html not found at:', adminPath);
-            return res.status(404).send('admin.html not found');
-        }
-        
-        res.sendFile(adminPath);
-    } catch (error) {
-        console.error('Error serving admin.html:', error);
-        res.status(500).send('Internal Server Error');
-    }
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // Excel 생성 엔드포인트
@@ -303,31 +234,19 @@ app.get('/api/registrations', (req, res) => {
 });
 
 // API 엔드포인트: 새로운 등록 데이터 추가
-app.post('/api/registrations', (req, res) => {
+app.post('/api/registrations', async (req, res) => {
     try {
         const { name, gender, address, phone, birthdate, livingType, program, privacyAgreement } = req.body;
         
-        const stmt = db.prepare(`
-            INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        
-        stmt.run(
-            name,
-            gender,
-            address,
-            phone,
-            birthdate,
-            livingType,
-            program,
-            privacyAgreement,
+        db.run(`INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, gender, address, phone, birthdate, livingType, program, privacyAgreement ? 1 : 0],
             function(err) {
                 if (err) {
                     console.error('Error inserting registration:', err);
                     return res.status(500).json({
                         success: false,
-                        message: '등록 중 오류가 발생했습니다.',
-                        error: err.message
+                        message: '등록 중 오류가 발생했습니다.'
                     });
                 }
                 
@@ -338,14 +257,11 @@ app.post('/api/registrations', (req, res) => {
                 });
             }
         );
-        
-        stmt.finalize();
     } catch (error) {
-        console.error('Error in /api/registrations POST:', error);
+        console.error('Registration error:', error);
         res.status(500).json({
             success: false,
-            message: '서버 오류가 발생했습니다.',
-            error: error.message
+            message: '서버 오류가 발생했습니다.'
         });
     }
 });
@@ -424,81 +340,20 @@ app.delete('/registrations/:id', (req, res) => {
     });
 });
 
-// Initialize database and start server
+// 서버 시작
 async function startServer() {
     try {
-        // 데이터베이스 연결
         db = await connectDatabase();
+        console.log('Database connected successfully');
         
-        // 샘플 데이터 추가
-        await new Promise((resolve, reject) => {
-            db.get('SELECT COUNT(*) as count FROM registrations', [], (err, row) => {
-                if (err) {
-                    console.error('Error checking table:', err);
-                    reject(err);
-                    return;
-                }
-                
-                if (row.count === 0) {
-                    const sampleData = {
-                        name: '홍길동',
-                        gender: 'male',
-                        address: '서울시 강남구',
-                        phone: '010-1234-5678',
-                        birthdate: '1990-01-01',
-                        livingType: 'general',
-                        program: 'yoga',
-                        privacyAgreement: 1
-                    };
-
-                    const stmt = db.prepare(`
-                        INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, privacyAgreement)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `);
-                    
-                    stmt.run(
-                        sampleData.name,
-                        sampleData.gender,
-                        sampleData.address,
-                        sampleData.phone,
-                        sampleData.birthdate,
-                        sampleData.livingType,
-                        sampleData.program,
-                        sampleData.privacyAgreement,
-                        (err) => {
-                            if (err) {
-                                console.error('Error inserting sample data:', err);
-                                reject(err);
-                            } else {
-                                console.log('Sample data added successfully');
-                                resolve();
-                            }
-                        }
-                    );
-                    stmt.finalize();
-                } else {
-                    resolve();
-                }
-            });
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+            console.log(`Server URL: ${SERVER_URL}`);
         });
-
-        // 서버 시작
-        app.listen(PORT, '0.0.0.0', (err) => {
-            if (err) {
-                console.error('서버 시작 중 오류 발생:', err);
-                process.exit(1);
-            }
-            console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
-        });
-
     } catch (error) {
-        console.error('Server initialization error:', error);
+        console.error('Failed to start server:', error);
         process.exit(1);
     }
 }
 
-// Start the server
-startServer().catch(error => {
-    console.error('Fatal error during server startup:', error);
-    process.exit(1);
-}); 
+startServer(); 
