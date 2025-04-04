@@ -3,7 +3,6 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const XLSX = require('xlsx');
 const fs = require('fs');
 
 // 환경 변수 설정
@@ -123,59 +122,63 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Excel 생성 엔드포인트
+// Excel 생성 엔드포인트를 CSV로 변경
 app.get('/export-excel', (req, res) => {
     try {
-        const excelDir = path.join(__dirname, 'excel');
-        if (!fs.existsSync(excelDir)) {
-            fs.mkdirSync(excelDir);
+        const exportDir = path.join(__dirname, 'exports');
+        if (!fs.existsSync(exportDir)) {
+            fs.mkdirSync(exportDir);
         }
 
-        const fileName = `registrations_${new Date().toISOString().split('T')[0]}.xlsx`;
-        const filePath = path.join(excelDir, fileName);
+        const fileName = `registrations_${new Date().toISOString().split('T')[0]}.csv`;
+        const filePath = path.join(exportDir, fileName);
 
         db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
             if (err) {
-                console.error('Error retrieving data for Excel:', err);
+                console.error('Error retrieving data:', err);
                 return res.status(500).json({ 
                     success: false,
                     message: '데이터 조회 중 오류가 발생했습니다.'
                 });
             }
 
+            // CSV 헤더
+            const headers = ['ID', '이름', '성별', '주소', '연락처', '생년월일', '생활구분', '프로그램', '개인정보동의', '접수일시'];
+            
             // 데이터 변환
-            const excelData = rows.map(row => ({
-                'ID': row.id,
-                '이름': row.name,
-                '성별': row.gender === 'male' ? '남성' : '여성',
-                '주소': row.address,
-                '연락처': row.phone,
-                '생년월일': row.birthdate,
-                '생활구분': getLivingTypeText(row.livingType),
-                '프로그램': getProgramText(row.program),
-                '개인정보동의': row.privacyAgreement ? '동의' : '미동의',
-                '접수일시': row.registrationDate
-            }));
+            const csvRows = rows.map(row => [
+                row.id,
+                row.name,
+                row.gender === 'male' ? '남성' : '여성',
+                row.address,
+                row.phone,
+                row.birthdate,
+                getLivingTypeText(row.livingType),
+                getProgramText(row.program),
+                row.privacyAgreement ? '동의' : '미동의',
+                row.registrationDate
+            ]);
 
-            // 워크북 생성
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(excelData);
-            XLSX.utils.book_append_sheet(wb, ws, '접수현황');
+            // CSV 문자열 생성
+            const csvContent = [
+                headers.join(','),
+                ...csvRows.map(row => row.join(','))
+            ].join('\n');
 
             // 파일 저장
-            XLSX.writeFile(wb, filePath);
+            fs.writeFileSync(filePath, csvContent, 'utf-8');
 
             res.json({
                 success: true,
-                message: 'Excel 파일이 생성되었습니다.',
+                message: 'CSV 파일이 생성되었습니다.',
                 filePath: filePath
             });
         });
     } catch (error) {
-        console.error('Error creating Excel file:', error);
+        console.error('Error creating CSV file:', error);
         res.status(500).json({
             success: false,
-            message: 'Excel 파일 생성 중 오류가 발생했습니다.'
+            message: 'CSV 파일 생성 중 오류가 발생했습니다.'
         });
     }
 });
