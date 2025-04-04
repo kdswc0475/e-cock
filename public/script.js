@@ -12,35 +12,43 @@ const programs = [
 // API 기본 URL 설정
 const API_BASE_URL = window.location.origin;
 
-// 페이지 로드 시 실행
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing program list...');
-    
-    // 프로그램 목록 로드
+// 프로그램 목록 로드 함수
+function loadProgramList() {
+    console.log('Loading program list...');
     const programSelect = document.getElementById('program');
-    if (programSelect) {
-        console.log('Program select found, current options:', programSelect.options.length);
-        
-        // 기존 옵션 제거 (첫 번째 옵션인 "선택하세요"는 유지)
-        while (programSelect.options.length > 1) {
-            programSelect.remove(1);
-        }
-        
-        // 프로그램 목록 추가
-        programs.forEach(program => {
-            const option = document.createElement('option');
-            option.value = program;
-            option.textContent = program;
-            programSelect.appendChild(option);
-            console.log('Added program:', program);
-        });
-        
-        console.log('Program options loaded:', programSelect.options.length);
-    } else {
-        console.error('Program select element not found');
+    
+    if (!programSelect) {
+        console.error('Program select element not found!');
+        return;
     }
     
-    // 폼 초기화
+    console.log('Before clearing - Options count:', programSelect.options.length);
+    
+    // 기존 옵션 모두 제거
+    programSelect.innerHTML = '';
+    
+    // "선택하세요" 옵션 추가
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '선택하세요';
+    programSelect.appendChild(defaultOption);
+    
+    // 프로그램 목록 추가
+    programs.forEach(program => {
+        const option = document.createElement('option');
+        option.value = program;
+        option.textContent = program;
+        programSelect.appendChild(option);
+        console.log('Added program:', program);
+    });
+    
+    console.log('After loading - Options count:', programSelect.options.length);
+}
+
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    loadProgramList();
     initializeForm();
 });
 
