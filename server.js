@@ -92,11 +92,13 @@ const authenticateAdmin = (req, res, next) => {
 // API Routes
 // 모든 등록 데이터 조회
 app.get('/api/registrations', authenticateAdmin, (req, res) => {
+    console.log('Fetching all registrations...');
     db.all('SELECT * FROM registrations ORDER BY registrationDate DESC', [], (err, rows) => {
         if (err) {
             console.error('Error fetching registrations:', err);
             return res.status(500).json({ success: false, message: '데이터를 불러오는데 실패했습니다.' });
         }
+        console.log('Found registrations:', rows);
         res.json({ success: true, data: rows });
     });
 });
@@ -118,14 +120,15 @@ app.get('/api/registrations/:id', authenticateAdmin, (req, res) => {
 
 // 새 등록 데이터 생성
 app.post('/api/registrations', (req, res) => {
+    console.log('Creating new registration:', req.body);
     const { name, gender, address, phone, birthdate, livingType, program } = req.body;
     
     if (!name || !gender || !address || !phone || !birthdate || !livingType || !program) {
         return res.status(400).json({ success: false, message: '모든 필드를 입력해주세요.' });
     }
 
-    const sql = `INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO registrations (name, gender, address, phone, birthdate, livingType, program, registrationDate)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`;
     const params = [name, gender, address, phone, birthdate, livingType, program];
 
     db.run(sql, params, function(err) {
@@ -133,15 +136,17 @@ app.post('/api/registrations', (req, res) => {
             console.error('Error creating registration:', err);
             return res.status(500).json({ success: false, message: '접수 생성에 실패했습니다.' });
         }
+        console.log('Registration created with ID:', this.lastID);
         res.json({ success: true, message: '접수가 완료되었습니다.', id: this.lastID });
     });
 });
 
 // 등록 데이터 수정
 app.put('/api/registrations/:id', authenticateAdmin, (req, res) => {
+    console.log('Updating registration:', req.params.id, req.body);
     const { id } = req.params;
     const { name, gender, address, phone, birthdate, livingType, program } = req.body;
-
+    
     if (!name || !gender || !address || !phone || !birthdate || !livingType || !program) {
         return res.status(400).json({ success: false, message: '모든 필드를 입력해주세요.' });
     }
@@ -160,12 +165,14 @@ app.put('/api/registrations/:id', authenticateAdmin, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({ success: false, message: '해당 접수를 찾을 수 없습니다.' });
         }
+        console.log('Registration updated:', id);
         res.json({ success: true, message: '접수가 수정되었습니다.' });
     });
 });
 
 // 등록 데이터 삭제
 app.delete('/api/registrations/:id', authenticateAdmin, (req, res) => {
+    console.log('Deleting registration:', req.params.id);
     const { id } = req.params;
     db.run('DELETE FROM registrations WHERE id = ?', [id], function(err) {
         if (err) {
@@ -175,6 +182,7 @@ app.delete('/api/registrations/:id', authenticateAdmin, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({ success: false, message: '해당 접수를 찾을 수 없습니다.' });
         }
+        console.log('Registration deleted:', id);
         res.json({ success: true, message: '접수가 삭제되었습니다.' });
     });
 });
