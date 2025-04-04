@@ -1,15 +1,45 @@
-// 프로그램 목록 정의
+// 프로그램 목록
 const programs = [
-    { id: 1, name: '노인 복지 프로그램' },
-    { id: 2, name: '장애인 복지 프로그램' },
-    { id: 3, name: '아동 복지 프로그램' },
-    { id: 4, name: '청소년 복지 프로그램' },
-    { id: 5, name: '가족 복지 프로그램' }
+    '유아발레교실',
+    '아동K-POP 댄스(A반)',
+    '아동K-POP 댄스(B반)',
+    '성인요가',
+    '다이어트 댄스',
+    '성인 통기타',
+    '밸리댄스'
 ];
 
+// API 기본 URL 설정
+const API_BASE_URL = window.BASE_URL || '';
+
 // 페이지 로드 시 실행
-window.addEventListener('load', function() {
-    console.log('Page loaded');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded');
+    
+    // 프로그램 목록 로드
+    const programSelect = document.getElementById('program');
+    if (programSelect) {
+        console.log('Program select found');
+        
+        // 기존 옵션 제거 (첫 번째 옵션인 "선택하세요"는 유지)
+        while (programSelect.options.length > 1) {
+            programSelect.remove(1);
+        }
+        
+        // 프로그램 목록 추가
+        programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = program;
+            programSelect.appendChild(option);
+        });
+        
+        console.log('Program options loaded:', programSelect.options.length);
+    } else {
+        console.error('Program select element not found');
+    }
+    
+    // 폼 초기화
     initializeForm();
 });
 
@@ -18,19 +48,8 @@ function initializeForm() {
     const form = document.getElementById('registrationForm');
     const submitButton = document.getElementById('submitButton');
     const messageElement = document.getElementById('message');
-    const programSelect = document.getElementById('program');
     
-    console.log('Form elements:', { form, submitButton, messageElement, programSelect });
-    
-    // 프로그램 목록 로드
-    if (programSelect) {
-        programs.forEach(program => {
-            const option = document.createElement('option');
-            option.value = program.id;
-            option.textContent = program.name;
-            programSelect.appendChild(option);
-        });
-    }
+    console.log('Form elements:', { form, submitButton, messageElement });
     
     if (form) {
         form.addEventListener('submit', async function(e) {
@@ -42,25 +61,17 @@ function initializeForm() {
                 
                 const formData = {
                     name: document.getElementById('name').value,
-                    gender: document.querySelector('select[name="gender"]').value,
+                    gender: document.getElementById('gender').value,
                     address: document.getElementById('address').value,
                     phone: document.getElementById('phone').value,
                     birthdate: document.getElementById('birthdate').value,
                     livingType: document.getElementById('livingType').value,
-                    program: document.getElementById('program').value,
-                    privacyAgreement: document.getElementById('privacyAgreement').checked ? 1 : 0
+                    program: document.getElementById('program').value
                 };
 
                 console.log('Form data:', formData);
 
-                // API 엔드포인트 URL 설정
-                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                    ? 'http://localhost:3000/api/registrations'
-                    : 'https://e-cock.onrender.com/api/registrations';
-
-                console.log('API URL:', apiUrl);
-
-                const response = await fetch(apiUrl, {
+                const response = await fetch(`${API_BASE_URL}/api/registrations`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -71,17 +82,18 @@ function initializeForm() {
                 const result = await response.json();
                 console.log('API response:', result);
                 
-                if (!response.ok) {
-                    throw new Error(result.message || '등록 중 오류가 발생했습니다.');
+                if (result.success) {
+                    messageElement.textContent = '접수가 완료되었습니다.';
+                    messageElement.className = 'success';
+                    form.reset();
+                } else {
+                    messageElement.textContent = result.message || '접수 중 오류가 발생했습니다.';
+                    messageElement.className = 'error';
                 }
-
-                messageElement.textContent = '접수가 완료되었습니다.';
-                messageElement.className = 'success';
-                form.reset();
                 
             } catch (error) {
                 console.error('Registration error:', error);
-                messageElement.textContent = error.message || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                messageElement.textContent = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
                 messageElement.className = 'error';
                 
             } finally {

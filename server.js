@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 
 // 환경 변수 설정
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -11,53 +12,32 @@ const PORT = process.env.PORT || 3000;
 // Express 앱 생성
 const app = express();
 
+// 데이터 디렉토리 생성
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
 // CORS 설정
 app.use(cors({
     origin: NODE_ENV === 'production' 
-        ? ['https://kdswc0475.github.io', 'https://e-cock.onrender.com']
-        : 'http://localhost:3000',
+        ? 'https://e-cock.onrender.com'
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Middleware
+// 미들웨어 설정
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// 정적 파일 서빙 설정
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 요청 로깅 미들웨어
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
-});
-
-// 데이터베이스 설정
-const dbPath = path.join(__dirname, 'data', 'registrations.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-        return;
-    }
-    console.log('Connected to the SQLite database.');
-    
-    // 테이블 생성
-    db.run(`CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        gender TEXT NOT NULL,
-        address TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        birthdate TEXT NOT NULL,
-        livingType TEXT NOT NULL,
-        program TEXT NOT NULL,
-        registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-        if (err) {
-            console.error('Error creating table:', err);
-        } else {
-            console.log('Registrations table ready');
-        }
-    });
 });
 
 // Health check endpoint
@@ -166,58 +146,84 @@ app.get('/api/export', (req, res) => {
     });
 });
 
-// Static routes
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// 데이터베이스 연결
+const dbPath = path.join(dataDir, 'registrations.db');
+let db;
 
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// Helper functions
-function getLivingTypeText(type) {
-    const types = {
-        'general': '일반',
-        'basic': '기초생활수급',
-        'lowIncome': '차상위',
-        'veteran': '국가유공자',
-        'other': '기타'
-    };
-    return types[type] || type;
+function connectDatabase() {
+    return new Promise((resolve, reject) => {
+        db = new sqlite3.Database(dbPath, (err) => {
+            if (err) {
+                console.error('Error opening database:', err);
+                reject(err);
+                return;
+            }
+            console.log('Connected to the SQLite database.');
+            
+            // 테이블 생성
+            db.run(`CREATE TABLE IF NOT EXISTS registrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                gender TEXT NOT NULL,
+                address TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                birthdate TEXT NOT NULL,
+                livingType TEXT NOT NULL,
+                program TEXT NOT NULL,
+                registrationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`, (err) => {
+                if (err) {
+                    console.error('Error creating table:', err);
+                    reject(err);
+                    return;
+                }
+                console.log('Registrations table ready');
+                resolve();
+            });
+        });
+    });
 }
 
-function getProgramText(program) {
-    const programs = {
-        'ballet': '유아발레교실',
-        'kpop-a': '아동K-POP 댄스(A반)',
-        'kpop-b': '아동K-POP 댄스(B반)',
-        'piano': '피아노교실',
-        'art': '미술교실',
-        'taekwondo': '태권도교실',
-        'english': '영어교실',
-        'coding': '코딩교실',
-        'soccer': '축구교실',
-        'basketball': '농구교실',
-        'yoga': '요가',
-        'pilates': '필라테스',
-        'gym': '헬스',
-        'swimming': '수영',
-        'tennis': '테니스',
-        'badminton': '배드민턴',
-        'table-tennis': '탁구',
-        'belly-dance': '밸리댄스'
-    };
-    return programs[program] || program;
+// 서버 시작 함수
+async function startServer() {
+    try {
+        await connectDatabase();
+        
+        const server = app.listen(PORT, () => {
+            console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+        });
+
+        // 정상적인 종료 처리
+        process.on('SIGTERM', () => {
+            console.log('Received SIGTERM. Performing cleanup...');
+            server.close(() => {
+                db.close(() => {
+                    console.log('Server and database connections closed.');
+                    process.exit(0);
+                });
+            });
+        });
+
+        // 예기치 않은 에러 처리
+        process.on('uncaughtException', (err) => {
+            console.error('Uncaught Exception:', err);
+            server.close(() => {
+                db.close(() => {
+                    console.log('Server and database connections closed due to error.');
+                    process.exit(1);
+                });
+            });
+        });
+
+        // 프로세스 종료 처리
+        process.on('exit', (code) => {
+            console.log(`Process exit with code: ${code}`);
+        });
+
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 }
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
-}); 
+startServer(); 
