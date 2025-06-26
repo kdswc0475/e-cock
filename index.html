@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>사회복지 프로그램 접수</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      margin: 20px 0;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+    input[type="text"],
+    input[type="tel"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    input[type="text"]:focus,
+    input[type="tel"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+    }
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .radio-group label {
+      display: inline;
+      font-weight: normal;
+      margin-left: 5px;
+    }
+    .radio-group input[type="radio"] {
+      margin-right: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 30px;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 6px;
+      background-color: #f8f9fa;
+      display: none;
+      border-left: 4px solid #4CAF50;
+    }
+    .privacy-agreement {
+      margin-top: 30px;
+      text-align: left;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+    .privacy-agreement h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .privacy-agreement p {
+      margin: 10px 0;
+      line-height: 1.6;
+      color: #666;
+    }
+    .program-selection {
+      margin: 15px 0;
+      text-align: left;
+    }
+    .program-checkbox {
+      margin: 12px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #f8f9fa;
+      transition: all 0.3s ease;
+    }
+    .program-checkbox:hover {
+      background-color: #e9ecef;
+      border-color: #4CAF50;
+    }
+    .program-checkbox input[type="checkbox"] {
+      margin-right: 10px;
+      transform: scale(1.2);
+    }
+    .program-checkbox label {
+      display: inline;
+      font-weight: normal;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+    .required {
+      color: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>사회복지 프로그램 접수</h1>
+    
+    <form id="registrationForm">
+      <div class="form-group">
+        <label for="name">이름 <span class="required">*</span></label>
+        <input type="text" id="name" required>
+      </div>
+      
+      <div class="form-group">
+        <label>성별 <span class="required">*</span></label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="gender" value="남성" required> 남성
+          </label>
+          <label>
+            <input type="radio" name="gender" value="여성" required> 여성
+          </label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="address">주소 <span class="required">*</span></label>
+        <input type="text" id="address" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="phone">연락처 <span class="required">*</span></label>
+        <input type="tel" id="phone" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="birthDate">생년월일 <span class="required">*</span></label>
+        <input type="date" id="birthDate" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="livingType">생활구분 <span class="required">*</span></label>
+        <select id="livingType" required>
+          <option value="">선택하세요</option>
+          <option value="일반">일반</option>
+          <option value="기초생활수급">기초생활수급</option>
+          <option value="차상위">차상위</option>
+          <option value="국가유공자">국가유공자</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>신청 프로그램</label>
+        <div class="program-selection">
+          <div class="program-checkbox">
+            <input type="checkbox" id="program1" name="programs" value="유아발레교실">
+            <label for="program1">유아발레교실</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program2" name="programs" value="아동K-POP 댄스(A반)">
+            <label for="program2">아동K-POP 댄스(A반)</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program3" name="programs" value="아동K-POP 댄스(B반)">
+            <label for="program3">아동K-POP 댄스(B반)</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program4" name="programs" value="성인요가">
+            <label for="program4">성인요가</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program5" name="programs" value="다이어트 댄스">
+            <label for="program5">다이어트 댄스</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program6" name="programs" value="성인 통기타">
+            <label for="program6">성인 통기타</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program7" name="programs" value="밸리댄스">
+            <label for="program7">밸리댄스</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program8" name="programs" value="유아창의미술">
+            <label for="program8">유아창의미술</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program9" name="programs" value="셔플댄스">
+            <label for="program9">셔플댄스</label>
+          </div>
+          <div class="program-checkbox">
+            <input type="checkbox" id="program10" name="programs" value="힐링공방">
+            <label for="program10">힐링공방</label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="privacy-agreement">
+        <h3>개인정보 수집 및 이용 동의</h3>
+        <p>1. 수집항목: 이름, 성별, 주소, 연락처, 생년월일, 생활구분, 신청 프로그램</p>
+        <p>2. 이용목적: 프로그램 참여자 관리 및 연락</p>
+        <p>3. 보유기간: 프로그램 종료 후 1년</p>
+        <p>4. 동의거부권: 개인정보 수집 및 이용에 대한 동의를 거부할 수 있으며, 동의 거부 시 프로그램 참여가 제한됩니다.</p>
+        <label>
+          <input type="checkbox" required>
+          개인정보 수집 및 이용에 동의합니다 <span class="required">*</span>
+        </label>
+      </div>
+      
+      <button type="submit">접수하기</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // 선택된 프로그램들 가져오기
+      const selectedPrograms = [];
+      document.querySelectorAll('input[name="programs"]:checked').forEach(checkbox => {
+        selectedPrograms.push(checkbox.value);
+      });
+      
+      const memberData = {
+        name: document.getElementById('name').value,
+        gender: document.querySelector('input[name="gender"]:checked').value,
+        address: document.getElementById('address').value,
+        phone: document.getElementById('phone').value,
+        birthDate: document.getElementById('birthDate').value,
+        livingType: document.getElementById('livingType').value,
+        programs: selectedPrograms
+      };
+      
+      // 성공 처리 (실제 구현에서는 서버로 데이터 전송)
+      handleSuccess({
+        memberId: 'SW' + Date.now(),
+        registrationDate: new Date().toLocaleDateString(),
+        programs: selectedPrograms.length > 0 ? selectedPrograms : ['없음']
+      });
+    });
+
+    function handleSuccess(result) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = `
+        <h3>접수 완료</h3>
+        <p><strong>접수번호:</strong> ${result.memberId}</p>
+        <p><strong>접수일:</strong> ${result.registrationDate}</p>
+        <p><strong>신청 프로그램:</strong> ${result.programs.join(', ')}</p>
+        <p style="color: #4CAF50; font-weight: bold;">프로그램 접수가 성공적으로 완료되었습니다.</p>
+      `;
+      
+      // Reset form
+      document.getElementById('registrationForm').reset();
+      
+      // 결과창으로 스크롤
+      resultDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handleError(error) {
+      alert('접수 중 오류가 발생했습니다: ' + error.message);
+    }
+  </script>
+</body>
+</html> 
