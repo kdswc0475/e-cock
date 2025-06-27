@@ -250,54 +250,43 @@
   </div>
 
   <script>
-    document.getElementById('registrationForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      // 선택된 프로그램들 가져오기
-      const selectedPrograms = [];
-      document.querySelectorAll('input[name="programs"]:checked').forEach(checkbox => {
-        selectedPrograms.push(checkbox.value);
-      });
-      
-      const memberData = {
-        name: document.getElementById('name').value,
-        gender: document.querySelector('input[name="gender"]:checked').value,
-        address: document.getElementById('address').value,
-        phone: document.getElementById('phone').value,
-        birthDate: document.getElementById('birthDate').value,
-        livingType: document.getElementById('livingType').value,
-        programs: selectedPrograms
-      };
-      
-      // 성공 처리 (실제 구현에서는 서버로 데이터 전송)
-      handleSuccess({
-        memberId: 'SW' + Date.now(),
-        registrationDate: new Date().toLocaleDateString(),
-        programs: selectedPrograms.length > 0 ? selectedPrograms : ['없음']
-      });
+  document.getElementById('registrationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // 선택된 프로그램들 가져오기
+    const selectedPrograms = [];
+    document.querySelectorAll('input[name="programs"]:checked').forEach(checkbox => {
+      selectedPrograms.push(checkbox.value);
     });
 
-    function handleSuccess(result) {
-      const resultDiv = document.getElementById('result');
-      resultDiv.style.display = 'block';
-      resultDiv.innerHTML = `
-        <h3>접수 완료</h3>
-        <p><strong>접수번호:</strong> ${result.memberId}</p>
-        <p><strong>접수일:</strong> ${result.registrationDate}</p>
-        <p><strong>신청 프로그램:</strong> ${result.programs.join(', ')}</p>
-        <p style="color: #4CAF50; font-weight: bold;">프로그램 접수가 성공적으로 완료되었습니다.</p>
-      `;
-      
-      // Reset form
-      document.getElementById('registrationForm').reset();
-      
-      // 결과창으로 스크롤
-      resultDiv.scrollIntoView({ behavior: 'smooth' });
-    }
+    const memberData = {
+      name: document.getElementById('name').value,
+      gender: document.querySelector('input[name="gender"]:checked').value,
+      address: document.getElementById('address').value,
+      phone: document.getElementById('phone').value,
+      birthdate: document.getElementById('birthDate').value, // 서버와 필드명 일치!
+      livingType: document.getElementById('livingType').value,
+      program: selectedPrograms.join(', ') // 여러 개 선택 시 문자열로
+    };
 
-    function handleError(error) {
-      alert('접수 중 오류가 발생했습니다: ' + error.message);
-    }
+    fetch('https://e-cock.onrender.com/api/registrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(memberData)
+    })
+    .then(res => res.json())
+    .then(result => {
+      if (result.success) {
+        alert('접수가 완료되었습니다!');
+        document.getElementById('registrationForm').reset();
+      } else {
+        alert('접수에 실패했습니다: ' + result.message);
+      }
+    })
+    .catch(err => {
+      alert('서버 연결에 실패했습니다.');
+    });
+  });
   </script>
 </body>
-</html> 
+</html>
